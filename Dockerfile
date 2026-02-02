@@ -1,26 +1,41 @@
 # --- Stage 1: Build Client ---
-FROM node:18-alpine AS client-builder
+FROM node:18-bullseye-slim AS client-builder
 WORKDIR /app/client
 COPY client/package*.json ./
-RUN npm install && npm cache clean --force
+RUN npm install
 COPY client/ ./
 RUN npm run build
 
 # --- Stage 2: Build Server ---
-FROM node:18-alpine AS server-builder
-RUN apk add --no-cache python3 make g++ py3-pip
+FROM node:18-bullseye-slim AS server-builder
+
+# Устанавливаем инструменты сборки для Debian
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app/server
 COPY server/package*.json ./
-RUN npm install && npm cache clean --force
+
+# Флаги для игнорирования предупреждений компилятора, которые валят билд
+ENV CXXFLAGS="-Wno-maybe-uninitialized -Wno-uninitialized"
+
+RUN npm install
+
 COPY server/ ./
 RUN npx prisma generate
 RUN npm run build
 
 # --- Stage 3: Final Production Image ---
-FROM node:18-alpine
+FROM node:18-bullseye-slim
 WORKDIR /app
-# Необходимые библиотеки для запуска воркера Mediasoup
-RUN apk add --no-cache libstdc++ libgcc python3
+
+# Библиотеки для работы скомпилированного воркера
+RUN apt-get update && apt-get install -y \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=server-builder /app/server/node_modules ./node_modules
 COPY --from=server-builder /app/server/dist ./dist
@@ -32,5 +47,4 @@ RUN npx prisma generate
 
 EXPOSE 3001
 
-# Используем npx prisma db push для автоматического обновления схемы NeonDB
 CMD npx prisma db push && node dist/index.js
