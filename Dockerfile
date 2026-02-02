@@ -5,21 +5,21 @@ RUN apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
 
-# 1. Копируем всё
+# 1. Копируем всё содержимое проекта
 COPY . .
 
-# 2. Устанавливаем зависимости в корне
+# 2. Устанавливаем зависимости корневого проекта (для Prisma и сервера)
 RUN npm install --ignore-scripts
 
-# 3. Переходим в папку клиента и устанавливаем зависимости там (если есть свой package.json)
-# Если клиент и сервер делят один package.json в корне, Next.js всё равно нужно запускать из папки client
+# 3. ПЕРЕХОДИМ В КЛИЕНТ И УСТАНАВЛИВАЕМ ЗАВИСИМОСТИ ТАМ
+# Это решит ошибки "Module not found" для axios, lucide-react и т.д.
+RUN cd client && npm install --ignore-scripts
+
+# 4. Генерируем Prisma клиент в корне
+RUN npx prisma generate
+
+# 5. Собираем Next.js из папки client
 WORKDIR /app/client
-
-# Генерируем Prisma (база обычно нужна серверу, но типы могут быть нужны и клиенту)
-RUN cd /app && npx prisma generate
-
-# 4. Запускаем сборку Next.js именно из папки client
-# Мы указываем путь к конфигу, если он в папке client
 RUN npx next build
 
 # --- Этап 2: Запуск ---
@@ -31,16 +31,19 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Копируем результаты сборки из папки client
-COPY --from=builder /app/client/public ./public
+# Копируем результаты сборки клиента
+COPY --from=builder /app/client/public ./client/public
+COPY --from=builder /app/client/.next ./client/.next
+# Копируем node_modules из клиента (там axios и прочее) и из корня (там prisma)
+COPY --from=builder /app/client/node_modules ./client/node_modules
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/client/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
 
 USER nextjs
 
 EXPOSE 3000
 
-# Если вы запускаете Next.js сервер:
+# Запуск. В зависимости от вашей архитектуры, вы можете запускать либо сервер, либо клиент.
+# Если вам нужен Next.js:
 CMD ["npm", "start", "--prefix", "client"]
