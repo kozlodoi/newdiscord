@@ -1,30 +1,31 @@
-# Этап 1: Сборка (Builder)
+# Этап 1: Сборка
 FROM node:20-alpine AS builder
 
-# Системные зависимости для Prisma и Next.js
 RUN apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
 
-# Копируем только файлы зависимостей
+# 1. Сначала копируем только файлы манифестов
 COPY package*.json ./
 
-# Устанавливаем ВСЕ зависимости (включая devDependencies для сборки)
-# Мы убираем --ignore-scripts здесь, чтобы бинарники (типа next) установились корректно
-RUN npm install
-
-# Копируем схему Prisma и генерируем клиент
+# 2. СРАЗУ копируем папку prisma (это исправит ошибку "schema.prisma not found")
 COPY prisma ./prisma/
+
+# 3. Устанавливаем зависимости. 
+# Мы используем --force, чтобы избежать конфликтов версий, и --ignore-scripts, 
+# чтобы Prisma не запускалась раньше времени.
+RUN npm install --ignore-scripts
+
+# 4. Теперь, когда всё на месте, генерируем клиент Prisma
 RUN npx prisma generate
 
-# Копируем оставшийся исходный код
+# 5. Копируем остальной код
 COPY . .
 
-# Принудительно проверяем наличие next и запускаем сборку
-# Если вдруг 'next' не виден, запускаем через npx
+# 6. Собираем Next.js проект
 RUN npx next build
 
-# Этап 2: Запуск (Runner)
+# Этап 2: Запуск
 FROM node:20-alpine AS runner
 WORKDIR /app
 RUN apk add --no-cache openssl
@@ -33,7 +34,6 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Копируем только то, что нужно для работы
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
