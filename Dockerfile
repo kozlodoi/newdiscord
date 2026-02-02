@@ -1,49 +1,61 @@
-# --- Build Client ---
+# --- Stage 1: Build Client ---
 FROM node:18-alpine AS client-builder
 WORKDIR /app/client
-
-# Копируем package.json (и lock если есть)
+# Копируем конфиги
 COPY client/package*.json ./
-
-# ИЗМЕНЕНИЕ: Используем install вместо ci, чтобы работать без lock-файла
+# Используем npm install (он создаст lock-файл, если его нет)
 RUN npm install
-
+# Копируем исходники и билдим
 COPY client/ ./
-# Use specific env for build time if needed
+# Переменная для билда (можно оставить пустой слэш для относительных путей)
 ENV NEXT_PUBLIC_API_URL=/ 
 RUN npm run build
 
-# --- Build Server ---
+# --- Stage 2: Build Server ---
 FROM node:18-alpine AS server-builder
+# !!! ИСПРАВЛЕНИЕ: Устанавливаем инструменты для сборки mediasoup (Python, Make, G++)
+RUN apk add --no-cache python3 make g++ py3-pip
+
 WORKDIR /app/server
 COPY server/package*.json ./
 
-# ИЗМЕНЕНИЕ: Используем install вместо ci
+# Устанавливаем зависимости (теперь компиляция mediasoup пройдет успешно)
 RUN npm install
 
 COPY server/ ./
+# Генерируем Prisma Client
 RUN npx prisma generate
+# Компилируем TypeScript
 RUN npm run build
 
-# --- Final Image ---
+# --- Stage 3: Final Production Image ---
 FROM node:18-alpine
 WORKDIR /app
 
-# System dependencies for Mediasoup
+# Mediasoup может требовать runtime библиотеки, оставляем python/make на всякий случай
+# (хотя для запуска скомпилированного воркера часто достаточно libstd)
 RUN apk add --no-cache python3 make g++
 
+# Копируем package.json
 COPY --from=server-builder /app/server/package*.json ./
 
-# ИЗМЕНЕНИЕ: Используем install вместо ci для production зависимостей
-RUN npm install --production
+# !!! ВАЖНОЕ ИЗМЕНЕНИЕ:
+# Мы копируем папку node_modules целиком из server-builder.
+# Это гарантирует, что скомпилированный там mediasoup перенесется сюда и будет работать.
+# Повторный npm install здесь не нужен и может вызвать ошибки.
+COPY --from=server-builder /app/server/node_modules ./node_modules
 
+# Копируем сбилженный бекенд
 COPY --from=server-builder /app/server/dist ./dist
+# Копируем prisma схему
 COPY --from=server-builder /app/server/prisma ./prisma
+# Копируем статику фронтенда
 COPY --from=client-builder /app/client/out ./client/out
 
-# Install runtime prisma (needed for migrations in prod)
+# Генерируем prisma клиент для production среды
 RUN npx prisma generate
 
 EXPOSE 3001
-# Start Command: Migrate DB -> Start Server
+
+# Запуск: Применяем миграции (db push) -> Запускаем сервер
 CMD npx prisma db push && node dist/index.js
