@@ -7,6 +7,7 @@ const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
@@ -82,7 +83,22 @@ app.get('/api/data', auth, async (req, res) => {
         }
     });
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
-    res.json({ servers, user });
+    
+    // Получаем друзей (принятые заявки)
+    const friendRequests = await prisma.friendRequest.findMany({
+        where: {
+            OR: [
+                { senderId: req.user.userId },
+                { receiverId: req.user.userId }
+            ]
+        },
+        include: {
+            sender: true,
+            receiver: true
+        }
+    });
+    
+    res.json({ servers, user, friendRequests });
 });
 
 app.get('/api/messages/:channelId', auth, async (req, res) => {
@@ -93,6 +109,248 @@ app.get('/api/messages/:channelId', auth, async (req, res) => {
         take: 50
     });
     res.json(messages);
+});
+
+// --- API: ПОИСК ПОЛЬЗОВАТЕЛЕЙ ---
+
+app.get('/api/users/search', auth, async (req, res) => {
+    const { query } = req.query;
+    if (!query || query.length < 2) {
+        return res.json([]);
+    }
+    
+    try {
+        const users = await prisma.user.findMany({
+            where: {
+                AND: [
+                    { id: { not: req.user.userId } }, // Не показываем себя
+                    {
+                        OR: [
+                            { username: { contains: query, mode: 'insensitive' } },
+                            { email: { contains: query, mode: 'insensitive' } }
+                        ]
+                    }
+                ]
+            },
+            select: {
+                id: true,
+                username: true,
+                email: true,
+                avatar: true
+            },
+            take: 10
+        });
+        res.json(users);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "Ошибка поиска" });
+    }
+});
+
+// --- API: ДРУЗЬЯ ---
+
+app.post('/api/friends/request', auth, async (req, res) => {
+    const { receiverId } = req.body;
+    
+    try {
+        // Проверяем, не отправлена ли уже заявка
+        const existing = await prisma.friendRequest.findFirst({
+            where: {
+                OR: [
+                    { senderId: req.user.userId, receiverId },
+                    { senderId: receiverId, receiverId: req.user.userId }
+                ]
+            }
+        });
+        
+        if (existing) {
+            return res.status(400).json({ error: "Заявка уже существует" });
+        }
+        
+        const request = await prisma.friendRequest.create({
+            data: {
+                senderId: req.user.userId,
+                receiverId,
+                status: 'PENDING'
+            },
+            include: {
+                sender: true,
+                receiver: true
+            }
+        });
+        
+        res.json(request);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "Ошибка создания заявки" });
+    }
+});
+
+app.post('/api/friends/respond', auth, async (req, res) => {
+    const { requestId, accept } = req.body;
+    
+    try {
+        const request = await prisma.friendRequest.findUnique({
+            where: { id: requestId }
+        });
+        
+        if (!request || request.receiverId !== req.user.userId) {
+            return res.status(403).json({ error: "Нет доступа" });
+        }
+        
+        const updated = await prisma.friendRequest.update({
+            where: { id: requestId },
+            data: { status: accept ? 'ACCEPTED' : 'REJECTED' },
+            include: {
+                sender: true,
+                receiver: true
+            }
+        });
+        
+        res.json(updated);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "Ошибка обработки заявки" });
+    }
+});
+
+// --- API: ПРИГЛАШЕНИЯ НА СЕРВЕРЫ ---
+
+app.post('/api/invites/create', auth, async (req, res) => {
+    const { serverId } = req.body;
+    
+    try {
+        // Проверяем, что пользователь является членом сервера
+        const member = await prisma.member.findFirst({
+            where: { serverId, userId: req.user.userId }
+        });
+        
+        if (!member) {
+            return res.status(403).json({ error: "Вы не являетесь членом этого сервера" });
+        }
+        
+        // Генерируем уникальный код
+        const code = crypto.randomBytes(4).toString('hex').toUpperCase();
+        
+        const invite = await prisma.invite.create({
+            data: {
+                code,
+                serverId,
+                createdBy: req.user.userId,
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 дней
+            },
+            include: {
+                server: true
+            }
+        });
+        
+        res.json(invite);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "Ошибка создания приглашения" });
+    }
+});
+
+app.get('/api/invites/:code', auth, async (req, res) => {
+    const { code } = req.params;
+    
+    try {
+        const invite = await prisma.invite.findUnique({
+            where: { code },
+            include: {
+                server: {
+                    include: {
+                        channels: true,
+                        members: true
+                    }
+                }
+            }
+        });
+        
+        if (!invite) {
+            return res.status(404).json({ error: "Приглашение не найдено" });
+        }
+        
+        // Проверяем срок действия
+        if (invite.expiresAt && new Date() > invite.expiresAt) {
+            return res.status(400).json({ error: "Приглашение истекло" });
+        }
+        
+        // Проверяем лимит использований
+        if (invite.maxUses && invite.uses >= invite.maxUses) {
+            return res.status(400).json({ error: "Приглашение исчерпано" });
+        }
+        
+        res.json(invite);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "Ошибка поиска приглашения" });
+    }
+});
+
+app.post('/api/invites/join', auth, async (req, res) => {
+    const { code } = req.body;
+    
+    try {
+        const invite = await prisma.invite.findUnique({
+            where: { code },
+            include: { server: true }
+        });
+        
+        if (!invite) {
+            return res.status(404).json({ error: "Приглашение не найдено" });
+        }
+        
+        // Проверяем срок действия
+        if (invite.expiresAt && new Date() > invite.expiresAt) {
+            return res.status(400).json({ error: "Приглашение истекло" });
+        }
+        
+        // Проверяем лимит использований
+        if (invite.maxUses && invite.uses >= invite.maxUses) {
+            return res.status(400).json({ error: "Приглашение исчерпано" });
+        }
+        
+        // Проверяем, не состоит ли уже в сервере
+        const existingMember = await prisma.member.findFirst({
+            where: {
+                userId: req.user.userId,
+                serverId: invite.serverId
+            }
+        });
+        
+        if (existingMember) {
+            return res.status(400).json({ error: "Вы уже состоите в этом сервере" });
+        }
+        
+        // Добавляем в сервер
+        await prisma.member.create({
+            data: {
+                userId: req.user.userId,
+                serverId: invite.serverId
+            }
+        });
+        
+        // Увеличиваем счетчик использований
+        await prisma.invite.update({
+            where: { id: invite.id },
+            data: { uses: { increment: 1 } }
+        });
+        
+        // Возвращаем обновленные данные
+        const servers = await prisma.server.findMany({
+            where: { members: { some: { userId: req.user.userId } } },
+            include: { 
+                channels: true,
+                members: { include: { user: true } }
+            }
+        });
+        
+        res.json({ success: true, servers });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "Ошибка присоединения к серверу" });
+    }
 });
 
 // --- SOCKET.IO: ЧАТ И ГОЛОС ---
