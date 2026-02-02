@@ -1,54 +1,48 @@
 # Этап 1: Сборка (Builder)
 FROM node:20-alpine AS builder
 
-# Установка системных библиотек (обязательно для Prisma + Alpine Linux)
+# Устанавливаем системные зависимости для Prisma
 RUN apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
 
-# Копируем файлы package.json
+# Копируем файлы зависимостей
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# ИСПРАВЛЕНИЕ: Используем 'npm install' вместо 'npm ci'.
-# Это предотвратит ошибку отсутствующего package-lock.json.
-RUN npm install
+# 1. Устанавливаем зависимости, ИГНОРИРУЯ скрипты (это лечит ошибку 127)
+RUN npm install --ignore-scripts
 
-# Генерация клиента Prisma
+# 2. Явно запускаем генерацию Prisma через npx
 RUN npx prisma generate
 
-# Копируем весь исходный код проекта
+# Копируем исходный код
 COPY . .
 
-# Запуск сборки (Next.js build)
+# Собираем проект
 RUN npm run build
 
-# Этап 2: Запуск (Runner) — для уменьшения размера итогового образа
+# Этап 2: Запуск (Runner)
 FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Установка openssl для работы Prisma в продакшене
+# Системные зависимости для продакшена
 RUN apk add --no-cache openssl
 
 ENV NODE_ENV=production
 
-# Создаем системного пользователя (безопасность)
+# Создаем пользователя
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Копируем только нужные файлы из этапа сборки
+# Копируем необходимые файлы из билдера
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
-
-# Копируем папку сборки Next.js (.next)
-# Автоматически устанавливаем права для пользователя nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 
-# Переключаемся на пользователя
 USER nextjs
 
-# Запускаем проект
 CMD ["npm", "start"]
