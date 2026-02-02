@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Discord Lite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #2b2d31; }
+        ::-webkit-scrollbar-thumb { background: #1a1b1e; border-radius: 4px; }
+        .active-channel { background-color: #404249; color: white; }
+    </style>
+</head>
+<body class="bg-[#313338] text-gray-300 flex h-screen overflow-hidden font-sans">
+    
+    <div id="server-list" class="w-[72px] bg-[#1E1F22] pt-3 flex flex-col items-center gap-2 overflow-y-auto"></div>
+
+    <div class="w-60 bg-[#2B2D31] flex flex-col">
+        <div class="h-12 border-b border-[#1F2023] flex items-center px-4 font-bold shadow text-white" id="server-name">...</div>
+        <div id="channel-list" class="flex-1 p-2 space-y-1 overflow-y-auto"></div>
+        <div class="h-14 bg-[#232428] flex items-center px-2 gap-2">
+            <img id="my-avatar" class="w-8 h-8 rounded-full">
+            <div class="text-xs font-bold text-white truncate w-24" id="my-username"></div>
+            <button onclick="logout()" class="text-red-400 hover:bg-gray-700 p-1 rounded"><i data-lucide="log-out" width="16"></i></button>
+        </div>
+    </div>
+
+    <div class="flex-1 flex flex-col min-w-0 bg-[#313338]">
+        <div class="h-12 border-b border-[#26272D] flex items-center px-4 font-bold text-white shadow">
+            <span id="channel-header">Select a channel</span>
+        </div>
+
+        <div id="chat-view" class="flex-1 flex flex-col hidden">
+            <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+            <form onsubmit="sendMessage(event)" class="p-4 bg-[#313338]">
+                <input id="msg-input" class="w-full bg-[#383A40] text-white p-3 rounded outline-none" placeholder="Message...">
+            </form>
+        </div>
+
+        <div id="voice-view" class="flex-1 hidden p-4">
+            <div class="text-center mb-4 text-green-400 font-bold">Connected to Voice</div>
+            <div id="video-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                </div>
+            <button onclick="leaveVoice()" class="mt-4 bg-red-500 text-white px-4 py-2 rounded">Disconnect</button>
+        </div>
+    </div>
+
+    <script>
+        // --- ЛОГИКА ---
+        const token = localStorage.getItem('token');
+        if(!token) window.location.href = '/index.html';
+
+        let state = { user: null, servers: [], activeServer: null, activeChannel: null, peers: [], myStream: null };
+        const socket = io();
+
+        // Инициализация
+        async function init() {
+            const res = await fetch('/api/data', { headers: { Authorization: `Bearer ${token}` } });
+            const data = await res.json();
+            state.user = data.user;
+            state.servers = data.servers;
+            
+            document.getElementById('my-avatar').src = state.user.avatar;
+            document.getElementById('my-username').innerText = state.user.username;
+            
+            renderServers();
+            if(state.servers.length) selectServer(state.servers[0]);
+            lucide.createIcons();
+        }
+
+        // Рендер серверов
+        function renderServers() {
+            const container = document.getElementById('server-list');
+            container.innerHTML = state.servers.map(s => `
+                <div onclick="selectServerById('${s.id}')" 
+                     class="w-12 h-12 bg-[#313338] rounded-[24px] hover:rounded-[16px] hover:bg-[#5865F2] flex items-center justify-center cursor-pointer transition-all text-white font-bold text-sm">
+                    ${s.name.substring(0,2).toUpperCase()}
+                </div>
+            `).join('');
+        }
+
+        function selectServerById(id) { selectServer(state.servers.find(s => s.id === id)); }
+
+        function selectServer(server) {
+            state.activeServer = server;
+            document.getElementById('server-name').innerText = server.name;
+            const container = document.getElementById('channel-list');
+            
+            container.innerHTML = server.channels.map(c => `
+                <div onclick="joinChannel('${c.id}', '${c.type}')" 
+                     class="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-[#35373C] hover:text-white ${state.activeChannel?.id === c.id ? 'active-channel' : ''}">
+                    <i data-lucide="${c.type === 'TEXT' ? 'hash' : 'volume-2'}" width="16"></i> ${c.name}
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // Вход в канал
+        async function joinChannel(id, type) {
+            const channel = state.activeServer.channels.find(c => c.id === id);
+            state.activeChannel = channel;
+            document.getElementById('channel-header').innerText = (type === 'TEXT' ? '# ' : '🔊 ') + channel.name;
+            
+            // UI Switch
+            document.getElementById('chat-view').classList.toggle('hidden', type !== 'TEXT');
+            document.getElementById('voice-view').classList.toggle('hidden', type !== 'VOICE');
+            
+            selectServer(state.activeServer); // update active class
+
+            if (type === 'TEXT') {
+                leaveVoice(); // Выходим из голоса если перешли в текст
+                socket.emit('join-text', id);
+                loadMessages(id);
+            } else {
+                startVoice(id);
+            }
+        }
+
+        // --- ТЕКСТ ---
+        async function loadMessages(channelId) {
+            const res = await fetch(`/api/messages/${channelId}`, { headers: { Authorization: `Bearer ${token}` } });
+            const msgs = await res.json();
+            const container = document.getElementById('messages');
+            container.innerHTML = msgs.map(m => `
+                <div class="flex gap-3 hover:bg-[#2e3035] -mx-2 p-2 rounded">
+                    <img src="${m.user.avatar}" class="w-10 h-10 rounded-full">
+                    <div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-white font-medium">${m.user.username}</span>
+                            <span class="text-xs text-gray-400">${new Date(m.createdAt).toLocaleTimeString()}</span>
+                        </div>
+                        <p class="text-gray-300">${m.content}</p>
+                    </div>
+                </div>
+            `).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('msg-input');
+            if(!input.value) return;
+            socket.emit('send-message', { content: input.value, channelId: state.activeChannel.id, token });
+            input.value = '';
+        }
+
+        socket.on('new-message', (msg) => {
+            if (state.activeChannel?.id === msg.channelId && state.activeChannel.type === 'TEXT') {
+                const container = document.getElementById('messages');
+                container.innerHTML += `
+                    <div class="flex gap-3 hover:bg-[#2e3035] -mx-2 p-2 rounded">
+                        <img src="${msg.user.avatar}" class="w-10 h-10 rounded-full">
+                        <div>
+                            <span class="text-white font-medium mr-2">${msg.user.username}</span>
+                            <span class="text-gray-300">${msg.content}</span>
+                        </div>
+                    </div>`;
+                container.scrollTop = container.scrollHeight;
+            }
+        });
+
+        // --- ГОЛОС (WebRTC Mesh) ---
+        const peersRef = []; // Хранит связи
+
+        function startVoice(channelId) {
+            navigator.mediaDevices.getUserMedia({ video: false, audio: true }).then(stream => {
+                state.myStream = stream;
+                // Показываем себя (без звука)
+                addAudioBox(stream, 'Me', true);
+
+                socket.emit('join-voice', { channelId, userId: state.user.id });
+
+                socket.on('all-users', users => {
+                    // users = массив socketId тех, кто уже в комнате. Мы (новичок) звоним ИМ.
+                    users.forEach(userID => {
+                        const peer = createPeer(userID, socket.id, stream);
+                        peersRef.push({ peerID: userID, peer });
+                    });
+                });
+
+                socket.on('user-joined', payload => {
+                    // Кто-то новый зашел и звонит НАМ. Мы отвечаем.
+                    const peer = addPeer(payload.signal, payload.callerID, stream);
+                    peersRef.push({ peerID: payload.callerID, peer });
+                });
+
+                socket.on('receiving-returned-signal', payload => {
+                    const item = peersRef.find(p => p.peerID === payload.id);
+                    item.peer.signal(payload.signal);
+                });
+
+                socket.on('user-left', id => {
+                    const peerObj = peersRef.find(p => p.peerID === id);
+                    if(peerObj) peerObj.peer.destroy();
+                    const el = document.getElementById(`audio-${id}`);
+                    if(el) el.remove();
+                });
+            });
+        }
+
+        function createPeer(userToSignal, callerID, stream) {
+            const peer = new SimplePeer({ initiator: true, trickle: false, stream });
+            peer.on('signal', signal => socket.emit('sending-signal', { userToSignal, callerID, signal }));
+            peer.on('stream', stream => addAudioBox(stream, userToSignal));
+            return peer;
+        }
+
+        function addPeer(incomingSignal, callerID, stream) {
+            const peer = new SimplePeer({ initiator: false, trickle: false, stream });
+            peer.on('signal', signal => socket.emit('returning-signal', { signal, callerID }));
+            peer.on('stream', stream => addAudioBox(stream, callerID));
+            peer.signal(incomingSignal);
+            return peer;
+        }
+
+        function addAudioBox(stream, id, isMe = false) {
+            const grid = document.getElementById('video-grid');
+            const div = document.createElement('div');
+            div.id = `audio-${id}`;
+            div.className = "bg-gray-800 p-4 rounded flex flex-col items-center justify-center h-32 border border-green-500";
+            div.innerHTML = `<div class="w-12 h-12 rounded-full bg-gray-600 mb-2"></div><span class="font-bold text-white">User</span>`;
+            
+            const audio = document.createElement('audio');
+            audio.srcObject = stream;
+            audio.autoplay = true;
+            if(isMe) audio.muted = true; // Не слышать себя
+            div.appendChild(audio);
+            grid.appendChild(div);
+        }
+
+        function leaveVoice() {
+            if(state.myStream) state.myStream.getTracks().forEach(t => t.stop());
+            socket.off('all-users');
+            socket.off('user-joined');
+            socket.off('receiving-returned-signal');
+            peersRef.forEach(p => p.peer.destroy());
+            document.getElementById('video-grid').innerHTML = '';
+            state.myStream = null;
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/index.html';
+        }
+
+        init();
+    </script>
+</body>
+</html>
