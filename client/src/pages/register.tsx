@@ -10,14 +10,22 @@ export default function Register() {
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+    
+        // Если переменная не задана, пробуем стучаться по относительному пути 
+        // или укажите ваш URL на Render напрямую для теста
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://newdiscord-wx7m.onrender.com';
+    
         try {
-            // Убедись, что NEXT_PUBLIC_API_URL настроен в Render
-            await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
-                email, username, password
+            const response = await axios.post(`${API_BASE}/auth/register`, {
+                email, 
+                username, 
+                password
             });
+            console.log('Успех:', response.data);
             router.push('/login');
         } catch (err) {
-            alert('Ошибка регистрации');
+            console.error('Детали ошибки:', err);
+            alert('Ошибка регистрации: проверьте консоль');
         }
     };
 
