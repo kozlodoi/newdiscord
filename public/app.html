@@ -12,27 +12,145 @@
         ::-webkit-scrollbar-track { background: #2b2d31; }
         ::-webkit-scrollbar-thumb { background: #1a1b1e; border-radius: 4px; }
         .active-channel { background-color: #404249; color: white; }
+        .modal { display: none; position: fixed; z-index: 50; inset: 0; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal.show { display: flex; }
     </style>
 </head>
 <body class="bg-[#313338] text-gray-300 flex h-screen overflow-hidden font-sans">
     
-    <div id="server-list" class="w-[72px] bg-[#1E1F22] pt-3 flex flex-col items-center gap-2 overflow-y-auto"></div>
-
-    <div class="w-60 bg-[#2B2D31] flex flex-col">
-        <div class="h-12 border-b border-[#1F2023] flex items-center px-4 font-bold shadow text-white" id="server-name">...</div>
-        <div id="channel-list" class="flex-1 p-2 space-y-1 overflow-y-auto"></div>
-        <div class="h-14 bg-[#232428] flex items-center px-2 gap-2">
-            <img id="my-avatar" class="w-8 h-8 rounded-full">
-            <div class="text-xs font-bold text-white truncate w-24" id="my-username"></div>
-            <button onclick="logout()" class="text-red-400 hover:bg-gray-700 p-1 rounded"><i data-lucide="log-out" width="16"></i></button>
+    <!-- Модальное окно: Поиск пользователей и добавление в друзья -->
+    <div id="add-friend-modal" class="modal">
+        <div class="bg-[#2B2D31] rounded-lg p-6 w-[500px] max-h-[600px] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Найти друзей</h3>
+                <button onclick="closeModal('add-friend-modal')" class="text-gray-400 hover:text-white">
+                    <i data-lucide="x" width="20"></i>
+                </button>
+            </div>
+            <input id="user-search" type="text" placeholder="Поиск по имени или email..." 
+                   class="w-full bg-[#1E1F22] p-3 rounded outline-none mb-4 text-white"
+                   oninput="searchUsers(this.value)">
+            <div id="search-results" class="flex-1 overflow-y-auto space-y-2"></div>
         </div>
     </div>
 
+    <!-- Модальное окно: Заявки в друзья -->
+    <div id="friend-requests-modal" class="modal">
+        <div class="bg-[#2B2D31] rounded-lg p-6 w-[500px] max-h-[600px] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Заявки в друзья</h3>
+                <button onclick="closeModal('friend-requests-modal')" class="text-gray-400 hover:text-white">
+                    <i data-lucide="x" width="20"></i>
+                </button>
+            </div>
+            <div id="friend-requests-list" class="flex-1 overflow-y-auto space-y-2"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Список друзей -->
+    <div id="friends-modal" class="modal">
+        <div class="bg-[#2B2D31] rounded-lg p-6 w-[500px] max-h-[600px] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Друзья</h3>
+                <button onclick="closeModal('friends-modal')" class="text-gray-400 hover:text-white">
+                    <i data-lucide="x" width="20"></i>
+                </button>
+            </div>
+            <div id="friends-list" class="flex-1 overflow-y-auto space-y-2"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Присоединиться к серверу -->
+    <div id="join-server-modal" class="modal">
+        <div class="bg-[#2B2D31] rounded-lg p-6 w-[400px]">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Присоединиться к серверу</h3>
+                <button onclick="closeModal('join-server-modal')" class="text-gray-400 hover:text-white">
+                    <i data-lucide="x" width="20"></i>
+                </button>
+            </div>
+            <input id="invite-code-input" type="text" placeholder="Введите код приглашения" 
+                   class="w-full bg-[#1E1F22] p-3 rounded outline-none mb-4 text-white">
+            <button onclick="joinServerByCode()" class="w-full bg-[#5865F2] hover:bg-[#4752C4] p-3 rounded text-white font-bold">
+                Присоединиться
+            </button>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Создать приглашение -->
+    <div id="create-invite-modal" class="modal">
+        <div class="bg-[#2B2D31] rounded-lg p-6 w-[400px]">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Пригласить на сервер</h3>
+                <button onclick="closeModal('create-invite-modal')" class="text-gray-400 hover:text-white">
+                    <i data-lucide="x" width="20"></i>
+                </button>
+            </div>
+            <div id="invite-link-container" class="hidden">
+                <p class="text-sm text-gray-400 mb-2">Ссылка-приглашение:</p>
+                <div class="flex gap-2">
+                    <input id="invite-link" readonly 
+                           class="flex-1 bg-[#1E1F22] p-3 rounded outline-none text-white" value="">
+                    <button onclick="copyInviteLink()" class="bg-[#5865F2] hover:bg-[#4752C4] px-4 rounded text-white">
+                        <i data-lucide="copy" width="16"></i>
+                    </button>
+                </div>
+            </div>
+            <button id="generate-invite-btn" onclick="createInvite()" 
+                    class="w-full bg-[#5865F2] hover:bg-[#4752C4] p-3 rounded text-white font-bold">
+                Создать приглашение
+            </button>
+        </div>
+    </div>
+
+    <!-- Список серверов -->
+    <div id="server-list" class="w-[72px] bg-[#1E1F22] pt-3 flex flex-col items-center gap-2 overflow-y-auto">
+        <!-- Кнопка "Добавить сервер" -->
+        <div onclick="openModal('join-server-modal')" 
+             class="w-12 h-12 bg-[#313338] rounded-[24px] hover:rounded-[16px] hover:bg-[#23A559] flex items-center justify-center cursor-pointer transition-all text-white">
+            <i data-lucide="plus" width="24"></i>
+        </div>
+    </div>
+
+    <!-- Боковая панель с каналами -->
+    <div class="w-60 bg-[#2B2D31] flex flex-col">
+        <div class="h-12 border-b border-[#1F2023] flex items-center px-4 font-bold shadow text-white justify-between" id="server-name-container">
+            <span id="server-name">...</span>
+            <button onclick="openModal('create-invite-modal')" class="text-gray-400 hover:text-white" title="Пригласить">
+                <i data-lucide="user-plus" width="16"></i>
+            </button>
+        </div>
+        <div id="channel-list" class="flex-1 p-2 space-y-1 overflow-y-auto"></div>
+        
+        <!-- Профиль пользователя -->
+        <div class="h-14 bg-[#232428] flex items-center px-2 gap-2">
+            <img id="my-avatar" class="w-8 h-8 rounded-full">
+            <div class="flex-1 min-w-0">
+                <div class="text-xs font-bold text-white truncate" id="my-username"></div>
+            </div>
+            <button onclick="openModal('add-friend-modal')" class="text-green-400 hover:bg-gray-700 p-1 rounded" title="Найти друзей">
+                <i data-lucide="user-plus" width="16"></i>
+            </button>
+            <button onclick="showFriendRequests()" class="text-blue-400 hover:bg-gray-700 p-1 rounded relative" title="Заявки в друзья">
+                <i data-lucide="user-check" width="16"></i>
+                <span id="friend-requests-badge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center"></span>
+            </button>
+            <button onclick="showFriends()" class="text-purple-400 hover:bg-gray-700 p-1 rounded" title="Мои друзья">
+                <i data-lucide="users" width="16"></i>
+            </button>
+            <button onclick="logout()" class="text-red-400 hover:bg-gray-700 p-1 rounded" title="Выйти">
+                <i data-lucide="log-out" width="16"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Основная область -->
     <div class="flex-1 flex flex-col min-w-0 bg-[#313338]">
         <div class="h-12 border-b border-[#26272D] flex items-center px-4 font-bold text-white shadow">
             <span id="channel-header">Select a channel</span>
         </div>
 
+        <!-- Текстовый чат -->
         <div id="chat-view" class="flex-1 flex flex-col hidden">
             <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
             <form onsubmit="sendMessage(event)" class="p-4 bg-[#313338]">
@@ -40,10 +158,10 @@
             </form>
         </div>
 
+        <!-- Голосовой чат -->
         <div id="voice-view" class="flex-1 hidden p-4">
             <div class="text-center mb-4 text-green-400 font-bold">Connected to Voice</div>
-            <div id="video-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                </div>
+            <div id="video-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
             <button onclick="leaveVoice()" class="mt-4 bg-red-500 text-white px-4 py-2 rounded">Disconnect</button>
         </div>
     </div>
@@ -53,7 +171,15 @@
         const token = localStorage.getItem('token');
         if(!token) window.location.href = '/index.html';
 
-        let state = { user: null, servers: [], activeServer: null, activeChannel: null, peers: [], myStream: null };
+        let state = { 
+            user: null, 
+            servers: [], 
+            activeServer: null, 
+            activeChannel: null, 
+            peers: [], 
+            myStream: null,
+            friendRequests: []
+        };
         const socket = io();
 
         // Инициализация
@@ -62,24 +188,264 @@
             const data = await res.json();
             state.user = data.user;
             state.servers = data.servers;
+            state.friendRequests = data.friendRequests || [];
             
             document.getElementById('my-avatar').src = state.user.avatar;
             document.getElementById('my-username').innerText = state.user.username;
             
             renderServers();
+            updateFriendRequestsBadge();
             if(state.servers.length) selectServer(state.servers[0]);
             lucide.createIcons();
+        }
+
+        // --- МОДАЛЬНЫЕ ОКНА ---
+        function openModal(id) {
+            document.getElementById(id).classList.add('show');
+            lucide.createIcons();
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('show');
+        }
+
+        // --- ПОИСК ПОЛЬЗОВАТЕЛЕЙ ---
+        let searchTimeout;
+        async function searchUsers(query) {
+            clearTimeout(searchTimeout);
+            if (query.length < 2) {
+                document.getElementById('search-results').innerHTML = '';
+                return;
+            }
+            
+            searchTimeout = setTimeout(async () => {
+                const res = await fetch(`/api/users/search?query=${encodeURIComponent(query)}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const users = await res.json();
+                
+                const container = document.getElementById('search-results');
+                container.innerHTML = users.map(u => {
+                    const existingRequest = state.friendRequests.find(fr => 
+                        (fr.senderId === state.user.id && fr.receiverId === u.id) ||
+                        (fr.receiverId === state.user.id && fr.senderId === u.id)
+                    );
+                    
+                    let buttonHtml = '';
+                    if (existingRequest) {
+                        if (existingRequest.status === 'PENDING') {
+                            buttonHtml = '<span class="text-yellow-400 text-sm">Ожидание</span>';
+                        } else if (existingRequest.status === 'ACCEPTED') {
+                            buttonHtml = '<span class="text-green-400 text-sm">Друзья</span>';
+                        }
+                    } else {
+                        buttonHtml = `<button onclick="sendFriendRequest('${u.id}')" class="bg-[#5865F2] hover:bg-[#4752C4] px-3 py-1 rounded text-white text-sm">Добавить</button>`;
+                    }
+                    
+                    return `
+                        <div class="flex items-center gap-3 p-3 bg-[#1E1F22] rounded hover:bg-[#35373C]">
+                            <img src="${u.avatar}" class="w-10 h-10 rounded-full">
+                            <div class="flex-1">
+                                <div class="text-white font-medium">${u.username}</div>
+                                <div class="text-xs text-gray-400">${u.email}</div>
+                            </div>
+                            ${buttonHtml}
+                        </div>
+                    `;
+                }).join('');
+                
+                lucide.createIcons();
+            }, 300);
+        }
+
+        // --- ДРУЗЬЯ ---
+        async function sendFriendRequest(receiverId) {
+            const res = await fetch('/api/friends/request', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}` 
+                },
+                body: JSON.stringify({ receiverId })
+            });
+            
+            if (res.ok) {
+                const request = await res.json();
+                state.friendRequests.push(request);
+                searchUsers(document.getElementById('user-search').value);
+            } else {
+                const error = await res.json();
+                alert(error.error);
+            }
+        }
+
+        async function respondToFriendRequest(requestId, accept) {
+            const res = await fetch('/api/friends/respond', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}` 
+                },
+                body: JSON.stringify({ requestId, accept })
+            });
+            
+            if (res.ok) {
+                const updated = await res.json();
+                const index = state.friendRequests.findIndex(fr => fr.id === requestId);
+                if (index >= 0) state.friendRequests[index] = updated;
+                showFriendRequests();
+                updateFriendRequestsBadge();
+            }
+        }
+
+        function showFriendRequests() {
+            const pending = state.friendRequests.filter(fr => 
+                fr.status === 'PENDING' && fr.receiverId === state.user.id
+            );
+            
+            const container = document.getElementById('friend-requests-list');
+            if (pending.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 py-8">Нет заявок</div>';
+            } else {
+                container.innerHTML = pending.map(fr => `
+                    <div class="flex items-center gap-3 p-3 bg-[#1E1F22] rounded">
+                        <img src="${fr.sender.avatar}" class="w-10 h-10 rounded-full">
+                        <div class="flex-1">
+                            <div class="text-white font-medium">${fr.sender.username}</div>
+                            <div class="text-xs text-gray-400">${fr.sender.email}</div>
+                        </div>
+                        <button onclick="respondToFriendRequest('${fr.id}', true)" 
+                                class="bg-green-500 hover:bg-green-600 px-3 py-1 rounded text-white text-sm">
+                            Принять
+                        </button>
+                        <button onclick="respondToFriendRequest('${fr.id}', false)" 
+                                class="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-white text-sm">
+                            Отклонить
+                        </button>
+                    </div>
+                `).join('');
+            }
+            
+            openModal('friend-requests-modal');
+            lucide.createIcons();
+        }
+
+        function showFriends() {
+            const friends = state.friendRequests.filter(fr => fr.status === 'ACCEPTED');
+            
+            const container = document.getElementById('friends-list');
+            if (friends.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 py-8">Нет друзей</div>';
+            } else {
+                container.innerHTML = friends.map(fr => {
+                    const friend = fr.senderId === state.user.id ? fr.receiver : fr.sender;
+                    return `
+                        <div class="flex items-center gap-3 p-3 bg-[#1E1F22] rounded hover:bg-[#35373C]">
+                            <img src="${friend.avatar}" class="w-10 h-10 rounded-full">
+                            <div class="flex-1">
+                                <div class="text-white font-medium">${friend.username}</div>
+                                <div class="text-xs text-gray-400">${friend.email}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            openModal('friends-modal');
+            lucide.createIcons();
+        }
+
+        function updateFriendRequestsBadge() {
+            const pending = state.friendRequests.filter(fr => 
+                fr.status === 'PENDING' && fr.receiverId === state.user.id
+            ).length;
+            
+            const badge = document.getElementById('friend-requests-badge');
+            if (pending > 0) {
+                badge.classList.remove('hidden');
+                badge.textContent = pending;
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        // --- ПРИГЛАШЕНИЯ НА СЕРВЕРЫ ---
+        async function createInvite() {
+            if (!state.activeServer) {
+                alert('Выберите сервер');
+                return;
+            }
+            
+            const res = await fetch('/api/invites/create', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}` 
+                },
+                body: JSON.stringify({ serverId: state.activeServer.id })
+            });
+            
+            if (res.ok) {
+                const invite = await res.json();
+                document.getElementById('invite-link').value = invite.code;
+                document.getElementById('invite-link-container').classList.remove('hidden');
+                document.getElementById('generate-invite-btn').classList.add('hidden');
+            } else {
+                const error = await res.json();
+                alert(error.error);
+            }
+        }
+
+        function copyInviteLink() {
+            const input = document.getElementById('invite-link');
+            input.select();
+            document.execCommand('copy');
+            alert('Код скопирован!');
+        }
+
+        async function joinServerByCode() {
+            const code = document.getElementById('invite-code-input').value.trim();
+            if (!code) return;
+            
+            const res = await fetch('/api/invites/join', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}` 
+                },
+                body: JSON.stringify({ code })
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                state.servers = data.servers;
+                renderServers();
+                closeModal('join-server-modal');
+                document.getElementById('invite-code-input').value = '';
+                alert('Вы присоединились к серверу!');
+            } else {
+                const error = await res.json();
+                alert(error.error);
+            }
         }
 
         // Рендер серверов
         function renderServers() {
             const container = document.getElementById('server-list');
-            container.innerHTML = state.servers.map(s => `
-                <div onclick="selectServerById('${s.id}')" 
-                     class="w-12 h-12 bg-[#313338] rounded-[24px] hover:rounded-[16px] hover:bg-[#5865F2] flex items-center justify-center cursor-pointer transition-all text-white font-bold text-sm">
-                    ${s.name.substring(0,2).toUpperCase()}
-                </div>
-            `).join('');
+            const addServerBtn = container.children[0]; // Сохраняем кнопку "+"
+            
+            container.innerHTML = '';
+            container.appendChild(addServerBtn); // Возвращаем кнопку "+"
+            
+            state.servers.forEach(s => {
+                const div = document.createElement('div');
+                div.onclick = () => selectServerById(s.id);
+                div.className = "w-12 h-12 bg-[#313338] rounded-[24px] hover:rounded-[16px] hover:bg-[#5865F2] flex items-center justify-center cursor-pointer transition-all text-white font-bold text-sm";
+                div.textContent = s.name.substring(0,2).toUpperCase();
+                container.appendChild(div);
+            });
+            
+            lucide.createIcons();
         }
 
         function selectServerById(id) { selectServer(state.servers.find(s => s.id === id)); }
@@ -236,7 +602,9 @@
             socket.off('all-users');
             socket.off('user-joined');
             socket.off('receiving-returned-signal');
+            socket.off('user-left');
             peersRef.forEach(p => p.peer.destroy());
+            peersRef.length = 0;
             document.getElementById('video-grid').innerHTML = '';
             state.myStream = null;
         }
