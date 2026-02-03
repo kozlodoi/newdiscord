@@ -12,13 +12,16 @@
         ::-webkit-scrollbar-track { background: #2b2d31; }
         ::-webkit-scrollbar-thumb { background: #1a1b1e; border-radius: 4px; }
         .active-channel { background-color: #404249; color: white; }
+        .active-dm { background-color: #404249; }
         .modal { display: none; position: fixed; z-index: 50; inset: 0; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
         .modal.show { display: flex; }
+        .server-icon { transition: all 0.2s; }
+        .server-icon:hover { border-radius: 16px !important; }
     </style>
 </head>
 <body class="bg-[#313338] text-gray-300 flex h-screen overflow-hidden font-sans">
     
-    <!-- Модальное окно: Поиск пользователей и добавление в друзья -->
+    <!-- Модальные окна -->
     <div id="add-friend-modal" class="modal">
         <div class="bg-[#2B2D31] rounded-lg p-6 w-[500px] max-h-[600px] flex flex-col">
             <div class="flex justify-between items-center mb-4">
@@ -34,7 +37,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно: Заявки в друзья -->
     <div id="friend-requests-modal" class="modal">
         <div class="bg-[#2B2D31] rounded-lg p-6 w-[500px] max-h-[600px] flex flex-col">
             <div class="flex justify-between items-center mb-4">
@@ -47,20 +49,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно: Список друзей -->
-    <div id="friends-modal" class="modal">
-        <div class="bg-[#2B2D31] rounded-lg p-6 w-[500px] max-h-[600px] flex flex-col">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-white">Друзья</h3>
-                <button onclick="closeModal('friends-modal')" class="text-gray-400 hover:text-white">
-                    <i data-lucide="x" width="20"></i>
-                </button>
-            </div>
-            <div id="friends-list" class="flex-1 overflow-y-auto space-y-2"></div>
-        </div>
-    </div>
-
-    <!-- Модальное окно: Присоединиться к серверу -->
     <div id="join-server-modal" class="modal">
         <div class="bg-[#2B2D31] rounded-lg p-6 w-[400px]">
             <div class="flex justify-between items-center mb-4">
@@ -77,7 +65,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно: Создать сервер -->
     <div id="create-server-modal" class="modal">
         <div class="bg-[#2B2D31] rounded-lg p-6 w-[400px]">
             <div class="flex justify-between items-center mb-4">
@@ -94,7 +81,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно: Создать приглашение -->
     <div id="create-invite-modal" class="modal">
         <div class="bg-[#2B2D31] rounded-lg p-6 w-[400px]">
             <div class="flex justify-between items-center mb-4">
@@ -104,7 +90,7 @@
                 </button>
             </div>
             <div id="invite-link-container" class="hidden">
-                <p class="text-sm text-gray-400 mb-2">Ссылка-приглашение:</p>
+                <p class="text-sm text-gray-400 mb-2">Код приглашения:</p>
                 <div class="flex gap-2">
                     <input id="invite-link" readonly 
                            class="flex-1 bg-[#1E1F22] p-3 rounded outline-none text-white" value="">
@@ -122,36 +108,48 @@
 
     <!-- Список серверов -->
     <div id="server-list" class="w-[72px] bg-[#1E1F22] pt-3 flex flex-col items-center gap-2 overflow-y-auto">
-        <!-- Меню "Добавить сервер" -->
-        <div class="relative group">
-            <div class="w-12 h-12 bg-[#313338] rounded-[24px] hover:rounded-[16px] hover:bg-[#23A559] flex items-center justify-center cursor-pointer transition-all text-white">
-                <i data-lucide="plus" width="24"></i>
-            </div>
-            <!-- Выпадающее меню -->
-            <div class="hidden group-hover:block absolute left-16 top-0 bg-[#111214] rounded-lg shadow-xl p-2 w-48 z-50">
-                <div onclick="openModal('create-server-modal')" 
-                     class="px-3 py-2 hover:bg-[#5865F2] rounded cursor-pointer text-white flex items-center gap-2">
-                    <i data-lucide="plus-circle" width="16"></i>
-                    <span>Создать сервер</span>
-                </div>
-                <div onclick="openModal('join-server-modal')" 
-                     class="px-3 py-2 hover:bg-[#5865F2] rounded cursor-pointer text-white flex items-center gap-2">
-                    <i data-lucide="compass" width="16"></i>
-                    <span>Присоединиться</span>
-                </div>
-            </div>
+        <!-- Кнопка "Домой" для DM -->
+        <div onclick="showDirectMessages()" 
+             class="server-icon w-12 h-12 bg-[#5865F2] rounded-[24px] flex items-center justify-center cursor-pointer transition-all text-white hover:bg-[#4752C4]">
+            <i data-lucide="home" width="24"></i>
+        </div>
+        
+        <div class="w-8 h-[2px] bg-[#35373C] rounded"></div>
+        
+        <!-- Серверы будут добавлены сюда -->
+        
+        <!-- Кнопка добавить сервер -->
+        <div onclick="showServerMenu(event)" 
+             class="server-icon w-12 h-12 bg-[#313338] rounded-[24px] flex items-center justify-center cursor-pointer transition-all text-[#23A559] hover:bg-[#23A559] hover:text-white">
+            <i data-lucide="plus" width="24"></i>
         </div>
     </div>
 
-    <!-- Боковая панель с каналами -->
+    <!-- Меню создания сервера (выпадающее) -->
+    <div id="server-menu" class="hidden fixed bg-[#111214] rounded-lg shadow-xl p-2 w-48 z-50">
+        <div onclick="openModal('create-server-modal'); hideServerMenu()" 
+             class="px-3 py-2 hover:bg-[#5865F2] rounded cursor-pointer text-white flex items-center gap-2">
+            <i data-lucide="plus-circle" width="16"></i>
+            <span>Создать сервер</span>
+        </div>
+        <div onclick="openModal('join-server-modal'); hideServerMenu()" 
+             class="px-3 py-2 hover:bg-[#5865F2] rounded cursor-pointer text-white flex items-center gap-2">
+            <i data-lucide="compass" width="16"></i>
+            <span>Присоединиться</span>
+        </div>
+    </div>
+
+    <!-- Боковая панель -->
     <div class="w-60 bg-[#2B2D31] flex flex-col">
-        <div class="h-12 border-b border-[#1F2023] flex items-center px-4 font-bold shadow text-white justify-between" id="server-name-container">
-            <span id="server-name">...</span>
-            <button onclick="openModal('create-invite-modal')" class="text-gray-400 hover:text-white" title="Пригласить">
+        <div class="h-12 border-b border-[#1F2023] flex items-center px-4 font-bold shadow text-white justify-between">
+            <span id="sidebar-title">Direct Messages</span>
+            <button id="invite-btn" onclick="openModal('create-invite-modal')" class="hidden text-gray-400 hover:text-white" title="Пригласить">
                 <i data-lucide="user-plus" width="16"></i>
             </button>
         </div>
-        <div id="channel-list" class="flex-1 p-2 space-y-1 overflow-y-auto"></div>
+        
+        <!-- Контент боковой панели (DM или каналы) -->
+        <div id="sidebar-content" class="flex-1 p-2 space-y-1 overflow-y-auto"></div>
         
         <!-- Профиль пользователя -->
         <div class="h-14 bg-[#232428] flex items-center px-2 gap-2">
@@ -162,12 +160,9 @@
             <button onclick="openModal('add-friend-modal')" class="text-green-400 hover:bg-gray-700 p-1 rounded" title="Найти друзей">
                 <i data-lucide="user-plus" width="16"></i>
             </button>
-            <button onclick="showFriendRequests()" class="text-blue-400 hover:bg-gray-700 p-1 rounded relative" title="Заявки в друзья">
+            <button onclick="showFriendRequests()" class="text-blue-400 hover:bg-gray-700 p-1 rounded relative" title="Заявки">
                 <i data-lucide="user-check" width="16"></i>
                 <span id="friend-requests-badge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center"></span>
-            </button>
-            <button onclick="showFriends()" class="text-purple-400 hover:bg-gray-700 p-1 rounded" title="Мои друзья">
-                <i data-lucide="users" width="16"></i>
             </button>
             <button onclick="logout()" class="text-red-400 hover:bg-gray-700 p-1 rounded" title="Выйти">
                 <i data-lucide="log-out" width="16"></i>
@@ -177,43 +172,63 @@
 
     <!-- Основная область -->
     <div class="flex-1 flex flex-col min-w-0 bg-[#313338]">
-        <div class="h-12 border-b border-[#26272D] flex items-center px-4 font-bold text-white shadow">
-            <span id="channel-header">Select a channel</span>
+        <div class="h-12 border-b border-[#26272D] flex items-center px-4 font-bold text-white shadow justify-between">
+            <span id="channel-header">Выберите чат</span>
+            <div id="voice-call-btn" class="hidden">
+                <button onclick="startDirectCall()" class="text-gray-400 hover:text-white p-2 rounded hover:bg-[#404249]" title="Голосовой звонок">
+                    <i data-lucide="phone" width="20"></i>
+                </button>
+            </div>
         </div>
 
-        <!-- Текстовый чат -->
+        <!-- Текстовый чат (серверы и DM) -->
         <div id="chat-view" class="flex-1 flex flex-col hidden">
             <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
             <form onsubmit="sendMessage(event)" class="p-4 bg-[#313338]">
-                <input id="msg-input" class="w-full bg-[#383A40] text-white p-3 rounded outline-none" placeholder="Message...">
+                <input id="msg-input" class="w-full bg-[#383A40] text-white p-3 rounded outline-none" placeholder="Сообщение...">
             </form>
         </div>
 
         <!-- Голосовой чат -->
-        <div id="voice-view" class="flex-1 hidden p-4">
-            <div class="text-center mb-4 text-green-400 font-bold">Connected to Voice</div>
-            <div id="video-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
-            <button onclick="leaveVoice()" class="mt-4 bg-red-500 text-white px-4 py-2 rounded">Disconnect</button>
+        <div id="voice-view" class="flex-1 hidden p-4 flex flex-col items-center justify-center">
+            <div class="text-center mb-4">
+                <div class="text-green-400 font-bold text-xl mb-2">Голосовой звонок</div>
+                <div id="voice-status" class="text-gray-400"></div>
+            </div>
+            <div id="video-grid" class="grid grid-cols-2 gap-4 mb-4"></div>
+            <button onclick="leaveVoice()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full font-bold">
+                Завершить звонок
+            </button>
+        </div>
+
+        <!-- Заглушка -->
+        <div id="empty-view" class="flex-1 flex items-center justify-center">
+            <div class="text-center text-gray-500">
+                <i data-lucide="message-circle" width="64" class="mx-auto mb-4 opacity-50"></i>
+                <p class="text-lg">Выберите чат или канал</p>
+            </div>
         </div>
     </div>
 
     <script>
-        // --- ЛОГИКА ---
         const token = localStorage.getItem('token');
         if(!token) window.location.href = '/index.html';
 
         let state = { 
             user: null, 
             servers: [], 
+            friends: [],
+            activeView: null,
             activeServer: null, 
-            activeChannel: null, 
+            activeChannel: null,
+            activeFriend: null,
+            friendRequests: [],
             peers: [], 
             myStream: null,
-            friendRequests: []
+            inCall: false
         };
         const socket = io();
 
-        // Инициализация
         async function init() {
             const res = await fetch('/api/data', { headers: { Authorization: `Bearer ${token}` } });
             const data = await res.json();
@@ -221,16 +236,19 @@
             state.servers = data.servers;
             state.friendRequests = data.friendRequests || [];
             
+            state.friends = state.friendRequests
+                .filter(fr => fr.status === 'ACCEPTED')
+                .map(fr => fr.senderId === state.user.id ? fr.receiver : fr.sender);
+            
             document.getElementById('my-avatar').src = state.user.avatar;
             document.getElementById('my-username').innerText = state.user.username;
             
             renderServers();
             updateFriendRequestsBadge();
-            if(state.servers.length) selectServer(state.servers[0]);
+            showDirectMessages();
             lucide.createIcons();
         }
 
-        // --- МОДАЛЬНЫЕ ОКНА ---
         function openModal(id) {
             document.getElementById(id).classList.add('show');
             lucide.createIcons();
@@ -238,9 +256,386 @@
 
         function closeModal(id) {
             document.getElementById(id).classList.remove('show');
+            if(id === 'create-invite-modal') {
+                document.getElementById('invite-link-container').classList.add('hidden');
+                document.getElementById('generate-invite-btn').classList.remove('hidden');
+            }
         }
 
-        // --- ПОИСК ПОЛЬЗОВАТЕЛЕЙ ---
+        function showServerMenu(event) {
+            const menu = document.getElementById('server-menu');
+            const rect = event.target.closest('.server-icon').getBoundingClientRect();
+            menu.style.left = rect.right + 10 + 'px';
+            menu.style.top = rect.top + 'px';
+            menu.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function hideServerMenu() {
+            document.getElementById('server-menu').classList.add('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('server-menu');
+            if(!menu.classList.contains('hidden') && !e.target.closest('.server-icon') && !e.target.closest('#server-menu')) {
+                hideServerMenu();
+            }
+        });
+
+        function renderServers() {
+            const container = document.getElementById('server-list');
+            const homeBtn = container.children[0];
+            const separator = container.children[1];
+            const addBtn = container.children[container.children.length - 1];
+            
+            container.innerHTML = '';
+            container.appendChild(homeBtn);
+            container.appendChild(separator);
+            
+            state.servers.forEach(s => {
+                const div = document.createElement('div');
+                div.onclick = () => selectServer(s);
+                div.className = "server-icon w-12 h-12 bg-[#313338] rounded-[24px] flex items-center justify-center cursor-pointer transition-all text-white font-bold text-sm hover:bg-[#5865F2]";
+                div.title = s.name;
+                div.textContent = s.name.substring(0,2).toUpperCase();
+                container.appendChild(div);
+            });
+            
+            container.appendChild(addBtn);
+            lucide.createIcons();
+        }
+
+        function showDirectMessages() {
+            state.activeView = 'dm';
+            state.activeServer = null;
+            state.activeChannel = null;
+            
+            document.getElementById('sidebar-title').innerText = 'Direct Messages';
+            document.getElementById('invite-btn').classList.add('hidden');
+            
+            const container = document.getElementById('sidebar-content');
+            if(state.friends.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 py-8 text-sm">Нет друзей<br>Добавьте друзей через кнопку ниже</div>';
+            } else {
+                container.innerHTML = state.friends.map(friend => `
+                    <div onclick="openDirectMessage('${friend.id}')" 
+                         class="flex items-center gap-3 px-2 py-2 rounded cursor-pointer hover:bg-[#35373C] hover:text-white ${state.activeFriend?.id === friend.id ? 'active-dm' : ''}">
+                        <img src="${friend.avatar}" class="w-8 h-8 rounded-full">
+                        <span class="font-medium">${friend.username}</span>
+                    </div>
+                `).join('');
+            }
+            
+            document.getElementById('chat-view').classList.add('hidden');
+            document.getElementById('voice-view').classList.add('hidden');
+            document.getElementById('empty-view').classList.remove('hidden');
+            document.getElementById('channel-header').innerText = 'Выберите чат';
+            document.getElementById('voice-call-btn').classList.add('hidden');
+            
+            lucide.createIcons();
+        }
+
+        async function openDirectMessage(friendId) {
+            const friend = state.friends.find(f => f.id === friendId);
+            if(!friend) return;
+            
+            state.activeFriend = friend;
+            state.activeChannel = null;
+            
+            showDirectMessages();
+            document.getElementById('channel-header').innerText = '@ ' + friend.username;
+            document.getElementById('voice-call-btn').classList.remove('hidden');
+            document.getElementById('empty-view').classList.add('hidden');
+            document.getElementById('chat-view').classList.remove('hidden');
+            document.getElementById('voice-view').classList.add('hidden');
+            
+            socket.emit('join-dm', { userId: state.user.id, friendId: friend.id });
+            
+            await loadDirectMessages(friend.id);
+        }
+
+        async function loadDirectMessages(friendId) {
+            const res = await fetch(`/api/dm/messages/${friendId}`, { 
+                headers: { Authorization: `Bearer ${token}` } 
+            });
+            const msgs = await res.json();
+            
+            const container = document.getElementById('messages');
+            const friend = state.friends.find(f => f.id === friendId);
+            
+            container.innerHTML = msgs.map(m => {
+                const isMe = m.senderId === state.user.id;
+                const sender = isMe ? state.user : friend;
+                return `
+                    <div class="flex gap-3 hover:bg-[#2e3035] -mx-2 p-2 rounded">
+                        <img src="${sender.avatar}" class="w-10 h-10 rounded-full">
+                        <div>
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-white font-medium">${sender.username}</span>
+                                <span class="text-xs text-gray-400">${new Date(m.createdAt).toLocaleTimeString()}</span>
+                            </div>
+                            <p class="text-gray-300">${m.content}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function selectServer(server) {
+            state.activeView = 'server';
+            state.activeServer = server;
+            state.activeFriend = null;
+            
+            document.getElementById('sidebar-title').innerText = server.name;
+            document.getElementById('invite-btn').classList.remove('hidden');
+            document.getElementById('voice-call-btn').classList.add('hidden');
+            
+            const container = document.getElementById('sidebar-content');
+            container.innerHTML = server.channels.map(c => `
+                <div onclick="joinChannel('${c.id}', '${c.type}')" 
+                     class="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-[#35373C] hover:text-white ${state.activeChannel?.id === c.id ? 'active-channel' : ''}">
+                    <i data-lucide="${c.type === 'TEXT' ? 'hash' : 'volume-2'}" width="16"></i> ${c.name}
+                </div>
+            `).join('');
+            
+            lucide.createIcons();
+        }
+
+        async function joinChannel(id, type) {
+            const channel = state.activeServer.channels.find(c => c.id === id);
+            state.activeChannel = channel;
+            document.getElementById('channel-header').innerText = (type === 'TEXT' ? '# ' : '🔊 ') + channel.name;
+            
+            document.getElementById('empty-view').classList.add('hidden');
+            document.getElementById('chat-view').classList.toggle('hidden', type !== 'TEXT');
+            document.getElementById('voice-view').classList.toggle('hidden', type !== 'VOICE');
+            
+            selectServer(state.activeServer);
+
+            if (type === 'TEXT') {
+                leaveVoice();
+                socket.emit('join-text', id);
+                await loadMessages(id);
+            } else {
+                startVoice(id);
+            }
+        }
+
+        async function loadMessages(channelId) {
+            const res = await fetch(`/api/messages/${channelId}`, { headers: { Authorization: `Bearer ${token}` } });
+            const msgs = await res.json();
+            const container = document.getElementById('messages');
+            container.innerHTML = msgs.map(m => `
+                <div class="flex gap-3 hover:bg-[#2e3035] -mx-2 p-2 rounded">
+                    <img src="${m.user.avatar}" class="w-10 h-10 rounded-full">
+                    <div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-white font-medium">${m.user.username}</span>
+                            <span class="text-xs text-gray-400">${new Date(m.createdAt).toLocaleTimeString()}</span>
+                        </div>
+                        <p class="text-gray-300">${m.content}</p>
+                    </div>
+                </div>
+            `).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('msg-input');
+            if(!input.value.trim()) return;
+            
+            if(state.activeFriend) {
+                socket.emit('send-dm', { 
+                    content: input.value, 
+                    receiverId: state.activeFriend.id, 
+                    token 
+                });
+            } else if(state.activeChannel) {
+                socket.emit('send-message', { 
+                    content: input.value, 
+                    channelId: state.activeChannel.id, 
+                    token 
+                });
+            }
+            input.value = '';
+        }
+
+        socket.on('new-message', (msg) => {
+            if (state.activeChannel?.id === msg.channelId && state.activeChannel.type === 'TEXT') {
+                const container = document.getElementById('messages');
+                container.innerHTML += `
+                    <div class="flex gap-3 hover:bg-[#2e3035] -mx-2 p-2 rounded">
+                        <img src="${msg.user.avatar}" class="w-10 h-10 rounded-full">
+                        <div>
+                            <span class="text-white font-medium mr-2">${msg.user.username}</span>
+                            <span class="text-gray-300">${msg.content}</span>
+                        </div>
+                    </div>`;
+                container.scrollTop = container.scrollHeight;
+            }
+        });
+
+        socket.on('new-dm', (msg) => {
+            if(state.activeFriend && (msg.senderId === state.activeFriend.id || msg.receiverId === state.activeFriend.id)) {
+                const container = document.getElementById('messages');
+                const isMe = msg.senderId === state.user.id;
+                const sender = isMe ? state.user : state.activeFriend;
+                container.innerHTML += `
+                    <div class="flex gap-3 hover:bg-[#2e3035] -mx-2 p-2 rounded">
+                        <img src="${sender.avatar}" class="w-10 h-10 rounded-full">
+                        <div>
+                            <span class="text-white font-medium mr-2">${sender.username}</span>
+                            <span class="text-gray-300">${msg.content}</span>
+                        </div>
+                    </div>`;
+                container.scrollTop = container.scrollHeight;
+            }
+        });
+
+        const peersRef = [];
+
+        function startVoice(channelId) {
+            navigator.mediaDevices.getUserMedia({ video: false, audio: true }).then(stream => {
+                state.myStream = stream;
+                state.inCall = true;
+                addAudioBox(stream, 'Вы', true);
+                document.getElementById('voice-status').innerText = 'В канале: ' + state.activeChannel.name;
+
+                socket.emit('join-voice', { channelId, userId: state.user.id });
+
+                socket.on('all-users', users => {
+                    users.forEach(userID => {
+                        const peer = createPeer(userID, socket.id, stream);
+                        peersRef.push({ peerID: userID, peer });
+                    });
+                });
+
+                socket.on('user-joined', payload => {
+                    const peer = addPeer(payload.signal, payload.callerID, stream);
+                    peersRef.push({ peerID: payload.callerID, peer });
+                });
+
+                socket.on('receiving-returned-signal', payload => {
+                    const item = peersRef.find(p => p.peerID === payload.id);
+                    if(item) item.peer.signal(payload.signal);
+                });
+
+                socket.on('user-left', id => {
+                    const peerObj = peersRef.find(p => p.peerID === id);
+                    if(peerObj) peerObj.peer.destroy();
+                    const el = document.getElementById(`audio-${id}`);
+                    if(el) el.remove();
+                });
+            }).catch(err => {
+                alert('Не удалось получить доступ к микрофону: ' + err.message);
+            });
+        }
+
+        function startDirectCall() {
+            if(!state.activeFriend) return;
+            
+            document.getElementById('empty-view').classList.add('hidden');
+            document.getElementById('chat-view').classList.add('hidden');
+            document.getElementById('voice-view').classList.remove('hidden');
+            
+            const dmVoiceChannel = `dm-${[state.user.id, state.activeFriend.id].sort().join('-')}`;
+            
+            navigator.mediaDevices.getUserMedia({ video: false, audio: true }).then(stream => {
+                state.myStream = stream;
+                state.inCall = true;
+                addAudioBox(stream, 'Вы', true);
+                document.getElementById('voice-status').innerText = 'Звонок с ' + state.activeFriend.username;
+
+                socket.emit('join-voice', { channelId: dmVoiceChannel, userId: state.user.id });
+
+                socket.on('all-users', users => {
+                    users.forEach(userID => {
+                        const peer = createPeer(userID, socket.id, stream);
+                        peersRef.push({ peerID: userID, peer });
+                    });
+                });
+
+                socket.on('user-joined', payload => {
+                    const peer = addPeer(payload.signal, payload.callerID, stream);
+                    peersRef.push({ peerID: payload.callerID, peer });
+                });
+
+                socket.on('receiving-returned-signal', payload => {
+                    const item = peersRef.find(p => p.peerID === payload.id);
+                    if(item) item.peer.signal(payload.signal);
+                });
+
+                socket.on('user-left', id => {
+                    const peerObj = peersRef.find(p => p.peerID === id);
+                    if(peerObj) peerObj.peer.destroy();
+                    const el = document.getElementById(`audio-${id}`);
+                    if(el) el.remove();
+                });
+            }).catch(err => {
+                alert('Не удалось получить доступ к микрофону: ' + err.message);
+            });
+        }
+
+        function createPeer(userToSignal, callerID, stream) {
+            const peer = new SimplePeer({ initiator: true, trickle: false, stream });
+            peer.on('signal', signal => socket.emit('sending-signal', { userToSignal, callerID, signal }));
+            peer.on('stream', stream => addAudioBox(stream, 'Пользователь'));
+            return peer;
+        }
+
+        function addPeer(incomingSignal, callerID, stream) {
+            const peer = new SimplePeer({ initiator: false, trickle: false, stream });
+            peer.on('signal', signal => socket.emit('returning-signal', { signal, callerID }));
+            peer.on('stream', stream => addAudioBox(stream, 'Пользователь'));
+            peer.signal(incomingSignal);
+            return peer;
+        }
+
+        function addAudioBox(stream, name, isMe = false) {
+            const grid = document.getElementById('video-grid');
+            const div = document.createElement('div');
+            div.id = `audio-${isMe ? 'me' : Date.now()}`;
+            div.className = "bg-[#1E1F22] p-6 rounded-lg flex flex-col items-center justify-center border-2 border-green-500";
+            div.innerHTML = `
+                <div class="w-20 h-20 rounded-full bg-[#5865F2] mb-3 flex items-center justify-center">
+                    <i data-lucide="user" width="40" class="text-white"></i>
+                </div>
+                <span class="font-bold text-white">${name}</span>
+            `;
+            
+            const audio = document.createElement('audio');
+            audio.srcObject = stream;
+            audio.autoplay = true;
+            if(isMe) audio.muted = true;
+            div.appendChild(audio);
+            grid.appendChild(div);
+            lucide.createIcons();
+        }
+
+        function leaveVoice() {
+            if(state.myStream) {
+                state.myStream.getTracks().forEach(t => t.stop());
+                state.myStream = null;
+            }
+            state.inCall = false;
+            socket.off('all-users');
+            socket.off('user-joined');
+            socket.off('receiving-returned-signal');
+            socket.off('user-left');
+            peersRef.forEach(p => p.peer.destroy());
+            peersRef.length = 0;
+            document.getElementById('video-grid').innerHTML = '';
+            document.getElementById('voice-view').classList.add('hidden');
+            
+            if(state.activeFriend) {
+                openDirectMessage(state.activeFriend.id);
+            } else if(state.activeChannel) {
+                document.getElementById('chat-view').classList.remove('hidden');
+            }
+        }
+
         let searchTimeout;
         async function searchUsers(query) {
             clearTimeout(searchTimeout);
@@ -289,7 +684,6 @@
             }, 300);
         }
 
-        // --- ДРУЗЬЯ ---
         async function sendFriendRequest(receiverId) {
             try {
                 const res = await fetch('/api/friends/request', {
@@ -312,7 +706,7 @@
                 }
             } catch (e) {
                 console.error('Error sending friend request:', e);
-                alert('Не удалось отправить заявку. Проверьте подключение к интернету.');
+                alert('Не удалось отправить заявку.');
             }
         }
 
@@ -330,8 +724,14 @@
                 const updated = await res.json();
                 const index = state.friendRequests.findIndex(fr => fr.id === requestId);
                 if (index >= 0) state.friendRequests[index] = updated;
+                
+                state.friends = state.friendRequests
+                    .filter(fr => fr.status === 'ACCEPTED')
+                    .map(fr => fr.senderId === state.user.id ? fr.receiver : fr.sender);
+                
                 showFriendRequests();
                 updateFriendRequestsBadge();
+                if(state.activeView === 'dm') showDirectMessages();
             }
         }
 
@@ -367,31 +767,6 @@
             lucide.createIcons();
         }
 
-        function showFriends() {
-            const friends = state.friendRequests.filter(fr => fr.status === 'ACCEPTED');
-            
-            const container = document.getElementById('friends-list');
-            if (friends.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-400 py-8">Нет друзей</div>';
-            } else {
-                container.innerHTML = friends.map(fr => {
-                    const friend = fr.senderId === state.user.id ? fr.receiver : fr.sender;
-                    return `
-                        <div class="flex items-center gap-3 p-3 bg-[#1E1F22] rounded hover:bg-[#35373C]">
-                            <img src="${friend.avatar}" class="w-10 h-10 rounded-full">
-                            <div class="flex-1">
-                                <div class="text-white font-medium">${friend.username}</div>
-                                <div class="text-xs text-gray-400">${friend.email}</div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-            
-            openModal('friends-modal');
-            lucide.createIcons();
-        }
-
         function updateFriendRequestsBadge() {
             const pending = state.friendRequests.filter(fr => 
                 fr.status === 'PENDING' && fr.receiverId === state.user.id
@@ -403,66 +778,6 @@
                 badge.textContent = pending;
             } else {
                 badge.classList.add('hidden');
-            }
-        }
-
-        // --- ПРИГЛАШЕНИЯ НА СЕРВЕРЫ ---
-        async function createInvite() {
-            if (!state.activeServer) {
-                alert('Выберите сервер');
-                return;
-            }
-            
-            const res = await fetch('/api/invites/create', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}` 
-                },
-                body: JSON.stringify({ serverId: state.activeServer.id })
-            });
-            
-            if (res.ok) {
-                const invite = await res.json();
-                document.getElementById('invite-link').value = invite.code;
-                document.getElementById('invite-link-container').classList.remove('hidden');
-                document.getElementById('generate-invite-btn').classList.add('hidden');
-            } else {
-                const error = await res.json();
-                alert(error.error);
-            }
-        }
-
-        function copyInviteLink() {
-            const input = document.getElementById('invite-link');
-            input.select();
-            document.execCommand('copy');
-            alert('Код скопирован!');
-        }
-
-        async function joinServerByCode() {
-            const code = document.getElementById('invite-code-input').value.trim();
-            if (!code) return;
-            
-            const res = await fetch('/api/invites/join', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}` 
-                },
-                body: JSON.stringify({ code })
-            });
-            
-            if (res.ok) {
-                const data = await res.json();
-                state.servers = data.servers;
-                renderServers();
-                closeModal('join-server-modal');
-                document.getElementById('invite-code-input').value = '';
-                alert('Вы присоединились к серверу!');
-            } else {
-                const error = await res.json();
-                alert(error.error);
             }
         }
 
@@ -495,184 +810,63 @@
             }
         }
 
-        // Рендер серверов
-        function renderServers() {
-            const container = document.getElementById('server-list');
-            const addServerMenu = container.children[0]; // Сохраняем меню "+"
+        async function joinServerByCode() {
+            const code = document.getElementById('invite-code-input').value.trim();
+            if (!code) return;
             
-            container.innerHTML = '';
-            container.appendChild(addServerMenu); // Возвращаем меню "+"
-            
-            state.servers.forEach(s => {
-                const div = document.createElement('div');
-                div.onclick = () => selectServerById(s.id);
-                div.className = "w-12 h-12 bg-[#313338] rounded-[24px] hover:rounded-[16px] hover:bg-[#5865F2] flex items-center justify-center cursor-pointer transition-all text-white font-bold text-sm";
-                div.textContent = s.name.substring(0,2).toUpperCase();
-                container.appendChild(div);
+            const res = await fetch('/api/invites/join', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}` 
+                },
+                body: JSON.stringify({ code })
             });
             
-            lucide.createIcons();
-        }
-
-        function selectServerById(id) { selectServer(state.servers.find(s => s.id === id)); }
-
-        function selectServer(server) {
-            state.activeServer = server;
-            document.getElementById('server-name').innerText = server.name;
-            const container = document.getElementById('channel-list');
-            
-            container.innerHTML = server.channels.map(c => `
-                <div onclick="joinChannel('${c.id}', '${c.type}')" 
-                     class="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-[#35373C] hover:text-white ${state.activeChannel?.id === c.id ? 'active-channel' : ''}">
-                    <i data-lucide="${c.type === 'TEXT' ? 'hash' : 'volume-2'}" width="16"></i> ${c.name}
-                </div>
-            `).join('');
-            lucide.createIcons();
-        }
-
-        // Вход в канал
-        async function joinChannel(id, type) {
-            const channel = state.activeServer.channels.find(c => c.id === id);
-            state.activeChannel = channel;
-            document.getElementById('channel-header').innerText = (type === 'TEXT' ? '# ' : '🔊 ') + channel.name;
-            
-            // UI Switch
-            document.getElementById('chat-view').classList.toggle('hidden', type !== 'TEXT');
-            document.getElementById('voice-view').classList.toggle('hidden', type !== 'VOICE');
-            
-            selectServer(state.activeServer); // update active class
-
-            if (type === 'TEXT') {
-                leaveVoice(); // Выходим из голоса если перешли в текст
-                socket.emit('join-text', id);
-                loadMessages(id);
+            if (res.ok) {
+                const data = await res.json();
+                state.servers = data.servers;
+                renderServers();
+                closeModal('join-server-modal');
+                document.getElementById('invite-code-input').value = '';
+                alert('Вы присоединились к серверу!');
             } else {
-                startVoice(id);
+                const error = await res.json();
+                alert(error.error);
             }
         }
 
-        // --- ТЕКСТ ---
-        async function loadMessages(channelId) {
-            const res = await fetch(`/api/messages/${channelId}`, { headers: { Authorization: `Bearer ${token}` } });
-            const msgs = await res.json();
-            const container = document.getElementById('messages');
-            container.innerHTML = msgs.map(m => `
-                <div class="flex gap-3 hover:bg-[#2e3035] -mx-2 p-2 rounded">
-                    <img src="${m.user.avatar}" class="w-10 h-10 rounded-full">
-                    <div>
-                        <div class="flex items-baseline gap-2">
-                            <span class="text-white font-medium">${m.user.username}</span>
-                            <span class="text-xs text-gray-400">${new Date(m.createdAt).toLocaleTimeString()}</span>
-                        </div>
-                        <p class="text-gray-300">${m.content}</p>
-                    </div>
-                </div>
-            `).join('');
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function sendMessage(e) {
-            e.preventDefault();
-            const input = document.getElementById('msg-input');
-            if(!input.value) return;
-            socket.emit('send-message', { content: input.value, channelId: state.activeChannel.id, token });
-            input.value = '';
-        }
-
-        socket.on('new-message', (msg) => {
-            if (state.activeChannel?.id === msg.channelId && state.activeChannel.type === 'TEXT') {
-                const container = document.getElementById('messages');
-                container.innerHTML += `
-                    <div class="flex gap-3 hover:bg-[#2e3035] -mx-2 p-2 rounded">
-                        <img src="${msg.user.avatar}" class="w-10 h-10 rounded-full">
-                        <div>
-                            <span class="text-white font-medium mr-2">${msg.user.username}</span>
-                            <span class="text-gray-300">${msg.content}</span>
-                        </div>
-                    </div>`;
-                container.scrollTop = container.scrollHeight;
+        async function createInvite() {
+            if (!state.activeServer) {
+                alert('Выберите сервер');
+                return;
             }
-        });
-
-        // --- ГОЛОС (WebRTC Mesh) ---
-        const peersRef = []; // Хранит связи
-
-        function startVoice(channelId) {
-            navigator.mediaDevices.getUserMedia({ video: false, audio: true }).then(stream => {
-                state.myStream = stream;
-                // Показываем себя (без звука)
-                addAudioBox(stream, 'Me', true);
-
-                socket.emit('join-voice', { channelId, userId: state.user.id });
-
-                socket.on('all-users', users => {
-                    // users = массив socketId тех, кто уже в комнате. Мы (новичок) звоним ИМ.
-                    users.forEach(userID => {
-                        const peer = createPeer(userID, socket.id, stream);
-                        peersRef.push({ peerID: userID, peer });
-                    });
-                });
-
-                socket.on('user-joined', payload => {
-                    // Кто-то новый зашел и звонит НАМ. Мы отвечаем.
-                    const peer = addPeer(payload.signal, payload.callerID, stream);
-                    peersRef.push({ peerID: payload.callerID, peer });
-                });
-
-                socket.on('receiving-returned-signal', payload => {
-                    const item = peersRef.find(p => p.peerID === payload.id);
-                    item.peer.signal(payload.signal);
-                });
-
-                socket.on('user-left', id => {
-                    const peerObj = peersRef.find(p => p.peerID === id);
-                    if(peerObj) peerObj.peer.destroy();
-                    const el = document.getElementById(`audio-${id}`);
-                    if(el) el.remove();
-                });
-            });
-        }
-
-        function createPeer(userToSignal, callerID, stream) {
-            const peer = new SimplePeer({ initiator: true, trickle: false, stream });
-            peer.on('signal', signal => socket.emit('sending-signal', { userToSignal, callerID, signal }));
-            peer.on('stream', stream => addAudioBox(stream, userToSignal));
-            return peer;
-        }
-
-        function addPeer(incomingSignal, callerID, stream) {
-            const peer = new SimplePeer({ initiator: false, trickle: false, stream });
-            peer.on('signal', signal => socket.emit('returning-signal', { signal, callerID }));
-            peer.on('stream', stream => addAudioBox(stream, callerID));
-            peer.signal(incomingSignal);
-            return peer;
-        }
-
-        function addAudioBox(stream, id, isMe = false) {
-            const grid = document.getElementById('video-grid');
-            const div = document.createElement('div');
-            div.id = `audio-${id}`;
-            div.className = "bg-gray-800 p-4 rounded flex flex-col items-center justify-center h-32 border border-green-500";
-            div.innerHTML = `<div class="w-12 h-12 rounded-full bg-gray-600 mb-2"></div><span class="font-bold text-white">User</span>`;
             
-            const audio = document.createElement('audio');
-            audio.srcObject = stream;
-            audio.autoplay = true;
-            if(isMe) audio.muted = true; // Не слышать себя
-            div.appendChild(audio);
-            grid.appendChild(div);
+            const res = await fetch('/api/invites/create', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}` 
+                },
+                body: JSON.stringify({ serverId: state.activeServer.id })
+            });
+            
+            if (res.ok) {
+                const invite = await res.json();
+                document.getElementById('invite-link').value = invite.code;
+                document.getElementById('invite-link-container').classList.remove('hidden');
+                document.getElementById('generate-invite-btn').classList.add('hidden');
+            } else {
+                const error = await res.json();
+                alert(error.error);
+            }
         }
 
-        function leaveVoice() {
-            if(state.myStream) state.myStream.getTracks().forEach(t => t.stop());
-            socket.off('all-users');
-            socket.off('user-joined');
-            socket.off('receiving-returned-signal');
-            socket.off('user-left');
-            peersRef.forEach(p => p.peer.destroy());
-            peersRef.length = 0;
-            document.getElementById('video-grid').innerHTML = '';
-            state.myStream = null;
+        function copyInviteLink() {
+            const input = document.getElementById('invite-link');
+            input.select();
+            document.execCommand('copy');
+            alert('Код скопирован!');
         }
 
         function logout() {
