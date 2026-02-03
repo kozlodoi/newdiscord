@@ -229,7 +229,8 @@
             placeholderVideoTrack: null,
             screenStream: null,
             inCall: false,
-            voiceUsers: {} // { channelId: [users] }
+            voiceUsers: {}, // { channelId: [users] }
+            dmVoiceChannel: null
         };
         const socket = io();
 
@@ -529,6 +530,7 @@
         const peersRef = [];
 
         function startVoice(channelId) {
+            state.dmVoiceChannel = null;
             navigator.mediaDevices.getUserMedia({ video: false, audio: true }).then(stream => {
                 state.micTrack = stream.getAudioTracks()[0];
                 state.placeholderVideoTrack = createPlaceholderVideoTrack();
@@ -537,6 +539,11 @@
                 
                 // Добавляем себя в список
                 addAudioBox(state.myStream, state.user.username, state.user.avatar, true);
+                addAudioBox(stream, state.user.username, state.user.avatar, {
+                    isMe: true,
+                    userId: state.user.id,
+                    elementId: 'me'
+                });
                 document.getElementById('voice-status').innerText = 'В канале: ' + state.activeChannel.name;
 
                 socket.emit('join-voice', { channelId, userId: state.user.id });
@@ -586,6 +593,7 @@
             document.getElementById('voice-view').classList.remove('hidden');
             
             const dmVoiceChannel = `dm-${[state.user.id, state.activeFriend.id].sort().join('-')}`;
+            state.dmVoiceChannel = dmVoiceChannel;
             
             navigator.mediaDevices.getUserMedia({ video: false, audio: true }).then(stream => {
                 state.micTrack = stream.getAudioTracks()[0];
@@ -594,6 +602,11 @@
                 state.inCall = true;
                 
                 addAudioBox(state.myStream, state.user.username, state.user.avatar, true);
+                addAudioBox(stream, state.user.username, state.user.avatar, {
+                    isMe: true,
+                    userId: state.user.id,
+                    elementId: 'me'
+                });
                 document.getElementById('voice-status').innerText = 'Звонок с ' + state.activeFriend.username;
 
                 socket.emit('join-voice', { channelId: dmVoiceChannel, userId: state.user.id });
@@ -651,7 +664,10 @@
             });
             peer.on('stream', remoteStream => {
                 if(userInfo) {
-                    addAudioBox(remoteStream, userInfo.username, userInfo.avatar, false);
+                    addAudioBox(remoteStream, userInfo.username, userInfo.avatar, {
+                        userId: userInfo.userId,
+                        elementId: userToSignal
+                    });
                 }
             });
             return peer;
@@ -672,16 +688,20 @@
             });
             peer.on('stream', remoteStream => {
                 if(userInfo) {
-                    addAudioBox(remoteStream, userInfo.username, userInfo.avatar, false);
+                    addAudioBox(remoteStream, userInfo.username, userInfo.avatar, {
+                        userId: userInfo.userId,
+                        elementId: callerID
+                    });
                 }
             });
             peer.signal(incomingSignal);
             return peer;
         }
 
-        function addAudioBox(stream, username, avatar, isMe = false) {
+        function addAudioBox(stream, username, avatar, options = {}) {
             const grid = document.getElementById('video-grid');
-            const id = isMe ? 'me' : Date.now();
+            const { isMe = false, userId, elementId } = options;
+            const id = elementId || (isMe ? 'me' : Date.now());
             
             // Проверяем, не добавлен ли уже этот пользователь
             if(document.getElementById(`audio-${id}`)) return;
@@ -712,7 +732,30 @@
                 const audio = document.createElement('audio');
                 audio.srcObject = stream;
                 audio.autoplay = true;
+                const storedVolume = userId ? parseFloat(localStorage.getItem(`volume:${userId}`)) : NaN;
+                audio.volume = Number.isFinite(storedVolume) ? storedVolume : 1;
                 div.appendChild(audio);
+
+                const volumeWrapper = document.createElement('label');
+                volumeWrapper.className = "mt-3 w-full text-xs text-gray-400 flex flex-col gap-1";
+                volumeWrapper.innerHTML = '<span>Громкость</span>';
+
+                const volumeInput = document.createElement('input');
+                volumeInput.type = 'range';
+                volumeInput.min = '0';
+                volumeInput.max = '1';
+                volumeInput.step = '0.01';
+                volumeInput.value = audio.volume.toString();
+                volumeInput.addEventListener('input', (event) => {
+                    const value = parseFloat(event.target.value);
+                    audio.volume = value;
+                    if(userId) {
+                        localStorage.setItem(`volume:${userId}`, value.toString());
+                    }
+                });
+
+                volumeWrapper.appendChild(volumeInput);
+                div.appendChild(volumeWrapper);
             }
             
             grid.appendChild(div);
@@ -804,6 +847,11 @@
 
         function leaveVoice() {
             stopScreenShare();
+        function leaveVoice(options = {}) {
+            const channelId = state.activeChannel?.id || state.dmVoiceChannel;
+            if (!options.skipEmit && channelId) {
+                socket.emit('leave-voice', { channelId });
+            }
             if(state.myStream) {
                 state.myStream.getTracks().forEach(t => t.stop());
                 state.myStream = null;
@@ -812,6 +860,7 @@
             state.placeholderStream = null;
             state.placeholderVideoTrack = null;
             state.inCall = false;
+            state.dmVoiceChannel = null;
             socket.off('all-users');
             socket.off('user-joined');
             socket.off('receiving-returned-signal');
@@ -832,6 +881,14 @@
                 openDirectMessage(state.activeFriend.id);
             }
         }
+
+        window.addEventListener('beforeunload', () => {
+            const channelId = state.activeChannel?.id || state.dmVoiceChannel;
+            if (channelId) {
+                socket.emit('leave-voice', { channelId });
+            }
+            leaveVoice({ skipEmit: true });
+        });
 
         let searchTimeout;
         async function searchUsers(query) {
