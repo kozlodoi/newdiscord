@@ -16,6 +16,39 @@ const prisma = new PrismaClient();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
+const buildIceServers = () => {
+    const iceServersEnv = process.env.ICE_SERVERS;
+    if (iceServersEnv) {
+        try {
+            const parsed = JSON.parse(iceServersEnv);
+            if (Array.isArray(parsed)) {
+                return parsed;
+            }
+        } catch (error) {
+            console.error('❌ Не удалось распарсить ICE_SERVERS:', error.message);
+        }
+    }
+
+    const servers = [];
+    if (process.env.STUN_URL) {
+        servers.push({ urls: process.env.STUN_URL });
+    }
+    if (process.env.TURN_URL) {
+        const turnServer = { urls: process.env.TURN_URL };
+        if (process.env.TURN_USER) {
+            turnServer.username = process.env.TURN_USER;
+        }
+        if (process.env.TURN_PASS) {
+            turnServer.credential = process.env.TURN_PASS;
+        }
+        servers.push(turnServer);
+    }
+    if (servers.length === 0) {
+        servers.push({ urls: 'stun:stun.l.google.com:19302' });
+    }
+    return servers;
+};
+
 // Проверка подключения к базе данных
 prisma.$connect()
     .then(() => console.log('✅ Подключение к базе данных установлено'))
@@ -30,6 +63,10 @@ console.log('📊 Доступные модели Prisma:', Object.keys(prisma).
 // Раздаем статические файлы (наши html)
 app.use(express.static('public'));
 app.use(express.json());
+
+app.get('/api/config', (req, res) => {
+    res.json({ iceServers: buildIceServers() });
+});
 
 // --- API: АУТЕНТИФИКАЦИЯ ---
 

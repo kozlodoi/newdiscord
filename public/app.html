@@ -217,11 +217,24 @@
             peers: [], 
             myStream: null,
             inCall: false,
-            voiceUsers: {} // { channelId: [users] }
+            voiceUsers: {}, // { channelId: [users] }
+            iceServers: []
         };
         const socket = io();
 
         async function init() {
+            try {
+                const configRes = await fetch('/api/config');
+                if (configRes.ok) {
+                    const configData = await configRes.json();
+                    if (Array.isArray(configData.iceServers)) {
+                        state.iceServers = configData.iceServers;
+                    }
+                }
+            } catch (error) {
+                console.warn('Не удалось загрузить конфигурацию ICE:', error);
+            }
+
             const res = await fetch('/api/data', { headers: { Authorization: `Bearer ${token}` } });
             const data = await res.json();
             state.user = data.user;
@@ -620,7 +633,12 @@
         }
 
         function createPeer(userToSignal, callerID, stream, userInfo) {
-            const peer = new SimplePeer({ initiator: true, trickle: false, stream });
+            const peer = new SimplePeer({
+                initiator: true,
+                trickle: false,
+                stream,
+                config: { iceServers: state.iceServers }
+            });
             peer.on('signal', signal => {
                 socket.emit('sending-signal', { 
                     userToSignal, 
@@ -642,7 +660,12 @@
         }
 
         function addPeer(incomingSignal, callerID, stream, userInfo) {
-            const peer = new SimplePeer({ initiator: false, trickle: false, stream });
+            const peer = new SimplePeer({
+                initiator: false,
+                trickle: false,
+                stream,
+                config: { iceServers: state.iceServers }
+            });
             peer.on('signal', signal => {
                 socket.emit('returning-signal', { 
                     signal, 
