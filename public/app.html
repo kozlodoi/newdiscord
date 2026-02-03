@@ -242,6 +242,43 @@
                     renderChannelsList();
                 }
             });
+
+            socket.on('all-users', users => {
+                if(!state.inCall || (!state.activeChannel && !state.activeFriend)) return;
+                users.forEach(userInfo => {
+                    const peer = createPeer(userInfo.socketId, socket.id, state.myStream, userInfo);
+                    peersRef.push({ peerID: userInfo.socketId, peer, userInfo });
+                });
+            });
+
+            socket.on('user-joined', payload => {
+                if(!state.inCall || (!state.activeChannel && !state.activeFriend)) return;
+                const peer = addPeer(payload.signal, payload.callerID, state.myStream, payload.userInfo);
+                peersRef.push({ peerID: payload.callerID, peer, userInfo: payload.userInfo });
+            });
+
+            socket.on('receiving-returned-signal', payload => {
+                if(!state.inCall || (!state.activeChannel && !state.activeFriend)) return;
+                const item = peersRef.find(p => p.peerID === payload.id);
+                if(item) {
+                    item.peer.signal(payload.signal);
+                    if(payload.userInfo) {
+                        item.userInfo = payload.userInfo;
+                    }
+                }
+            });
+
+            socket.on('user-left', id => {
+                if(!state.inCall || (!state.activeChannel && !state.activeFriend)) return;
+                const peerObj = peersRef.find(p => p.peerID === id);
+                if(peerObj) {
+                    peerObj.peer.destroy();
+                    const index = peersRef.findIndex(p => p.peerID === id);
+                    if(index !== -1) peersRef.splice(index, 1);
+                }
+                const el = document.getElementById(`audio-${id}`);
+                if(el) el.remove();
+            });
             
             renderServers();
             updateFriendRequestsBadge();
@@ -527,38 +564,6 @@
 
                 socket.emit('join-voice', { channelId, userId: state.user.id });
 
-                socket.on('all-users', users => {
-                    users.forEach(userInfo => {
-                        const peer = createPeer(userInfo.socketId, socket.id, stream, userInfo);
-                        peersRef.push({ peerID: userInfo.socketId, peer, userInfo });
-                    });
-                });
-
-                socket.on('user-joined', payload => {
-                    const peer = addPeer(payload.signal, payload.callerID, stream, payload.userInfo);
-                    peersRef.push({ peerID: payload.callerID, peer, userInfo: payload.userInfo });
-                });
-
-                socket.on('receiving-returned-signal', payload => {
-                    const item = peersRef.find(p => p.peerID === payload.id);
-                    if(item) {
-                        item.peer.signal(payload.signal);
-                        if(payload.userInfo) {
-                            item.userInfo = payload.userInfo;
-                        }
-                    }
-                });
-
-                socket.on('user-left', id => {
-                    const peerObj = peersRef.find(p => p.peerID === id);
-                    if(peerObj) {
-                        peerObj.peer.destroy();
-                        const index = peersRef.findIndex(p => p.peerID === id);
-                        if(index !== -1) peersRef.splice(index, 1);
-                    }
-                    const el = document.getElementById(`audio-${id}`);
-                    if(el) el.remove();
-                });
             }).catch(err => {
                 alert('Не удалось получить доступ к микрофону: ' + err.message);
             });
@@ -582,38 +587,6 @@
 
                 socket.emit('join-voice', { channelId: dmVoiceChannel, userId: state.user.id });
 
-                socket.on('all-users', users => {
-                    users.forEach(userInfo => {
-                        const peer = createPeer(userInfo.socketId, socket.id, stream, userInfo);
-                        peersRef.push({ peerID: userInfo.socketId, peer, userInfo });
-                    });
-                });
-
-                socket.on('user-joined', payload => {
-                    const peer = addPeer(payload.signal, payload.callerID, stream, payload.userInfo);
-                    peersRef.push({ peerID: payload.callerID, peer, userInfo: payload.userInfo });
-                });
-
-                socket.on('receiving-returned-signal', payload => {
-                    const item = peersRef.find(p => p.peerID === payload.id);
-                    if(item) {
-                        item.peer.signal(payload.signal);
-                        if(payload.userInfo) {
-                            item.userInfo = payload.userInfo;
-                        }
-                    }
-                });
-
-                socket.on('user-left', id => {
-                    const peerObj = peersRef.find(p => p.peerID === id);
-                    if(peerObj) {
-                        peerObj.peer.destroy();
-                        const index = peersRef.findIndex(p => p.peerID === id);
-                        if(index !== -1) peersRef.splice(index, 1);
-                    }
-                    const el = document.getElementById(`audio-${id}`);
-                    if(el) el.remove();
-                });
             }).catch(err => {
                 alert('Не удалось получить доступ к микрофону: ' + err.message);
             });
@@ -695,10 +668,6 @@
                 state.myStream = null;
             }
             state.inCall = false;
-            socket.off('all-users');
-            socket.off('user-joined');
-            socket.off('receiving-returned-signal');
-            socket.off('user-left');
             peersRef.forEach(p => p.peer.destroy());
             peersRef.length = 0;
             document.getElementById('video-grid').innerHTML = '';
