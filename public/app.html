@@ -882,9 +882,8 @@
             button.textContent = isSharing ? 'Остановить демонстрацию' : 'Демонстрация экрана';
         }
 
-        function leaveVoice() {
-            stopScreenShare();
         function leaveVoice(options = {}) {
+            stopScreenShare();
             const channelId = state.activeChannel?.id || state.dmVoiceChannel;
             if (!options.skipEmit && channelId) {
                 socket.emit('leave-voice', { channelId });
