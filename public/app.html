@@ -17,6 +17,7 @@
         .modal.show { display: flex; }
         .server-icon { transition: all 0.2s; }
         .server-icon:hover { border-radius: 16px !important; }
+        .voice-user { font-size: 11px; padding: 2px 8px; margin-left: 24px; }
     </style>
 </head>
 <body class="bg-[#313338] text-gray-300 flex h-screen overflow-hidden font-sans">
@@ -108,7 +109,6 @@
 
     <!-- Список серверов -->
     <div id="server-list" class="w-[72px] bg-[#1E1F22] pt-3 flex flex-col items-center gap-2 overflow-y-auto">
-        <!-- Кнопка "Домой" для DM -->
         <div onclick="showDirectMessages()" 
              class="server-icon w-12 h-12 bg-[#5865F2] rounded-[24px] flex items-center justify-center cursor-pointer transition-all text-white hover:bg-[#4752C4]">
             <i data-lucide="home" width="24"></i>
@@ -116,16 +116,12 @@
         
         <div class="w-8 h-[2px] bg-[#35373C] rounded"></div>
         
-        <!-- Серверы будут добавлены сюда -->
-        
-        <!-- Кнопка добавить сервер -->
         <div onclick="showServerMenu(event)" 
              class="server-icon w-12 h-12 bg-[#313338] rounded-[24px] flex items-center justify-center cursor-pointer transition-all text-[#23A559] hover:bg-[#23A559] hover:text-white">
             <i data-lucide="plus" width="24"></i>
         </div>
     </div>
 
-    <!-- Меню создания сервера (выпадающее) -->
     <div id="server-menu" class="hidden fixed bg-[#111214] rounded-lg shadow-xl p-2 w-48 z-50">
         <div onclick="openModal('create-server-modal'); hideServerMenu()" 
              class="px-3 py-2 hover:bg-[#5865F2] rounded cursor-pointer text-white flex items-center gap-2">
@@ -148,10 +144,8 @@
             </button>
         </div>
         
-        <!-- Контент боковой панели (DM или каналы) -->
         <div id="sidebar-content" class="flex-1 p-2 space-y-1 overflow-y-auto"></div>
         
-        <!-- Профиль пользователя -->
         <div class="h-14 bg-[#232428] flex items-center px-2 gap-2">
             <img id="my-avatar" class="w-8 h-8 rounded-full">
             <div class="flex-1 min-w-0">
@@ -181,7 +175,6 @@
             </div>
         </div>
 
-        <!-- Текстовый чат (серверы и DM) -->
         <div id="chat-view" class="flex-1 flex flex-col hidden">
             <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
             <form onsubmit="sendMessage(event)" class="p-4 bg-[#313338]">
@@ -189,7 +182,6 @@
             </form>
         </div>
 
-        <!-- Голосовой чат -->
         <div id="voice-view" class="flex-1 hidden p-4 flex flex-col items-center justify-center">
             <div class="text-center mb-4">
                 <div class="text-green-400 font-bold text-xl mb-2">Голосовой звонок</div>
@@ -201,7 +193,6 @@
             </button>
         </div>
 
-        <!-- Заглушка -->
         <div id="empty-view" class="flex-1 flex items-center justify-center">
             <div class="text-center text-gray-500">
                 <i data-lucide="message-circle" width="64" class="mx-auto mb-4 opacity-50"></i>
@@ -225,7 +216,8 @@
             friendRequests: [],
             peers: [], 
             myStream: null,
-            inCall: false
+            inCall: false,
+            voiceUsers: {} // { channelId: [users] }
         };
         const socket = io();
 
@@ -242,6 +234,14 @@
             
             document.getElementById('my-avatar').src = state.user.avatar;
             document.getElementById('my-username').innerText = state.user.username;
+            
+            // Подписываемся на обновления голосовых пользователей
+            socket.on('voice-users-updated', ({ channelId, users }) => {
+                state.voiceUsers[channelId] = users;
+                if(state.activeServer) {
+                    renderChannelsList();
+                }
+            });
             
             renderServers();
             updateFriendRequestsBadge();
@@ -286,7 +286,7 @@
             const container = document.getElementById('server-list');
             const homeBtn = container.children[0];
             const separator = container.children[1];
-            const addBtn = container.children[container.children.length - 1];
+            const addBtn = container.children[2];
             
             container.innerHTML = '';
             container.appendChild(homeBtn);
@@ -391,13 +391,32 @@
             document.getElementById('invite-btn').classList.remove('hidden');
             document.getElementById('voice-call-btn').classList.add('hidden');
             
+            renderChannelsList();
+        }
+
+        function renderChannelsList() {
             const container = document.getElementById('sidebar-content');
-            container.innerHTML = server.channels.map(c => `
-                <div onclick="joinChannel('${c.id}', '${c.type}')" 
-                     class="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-[#35373C] hover:text-white ${state.activeChannel?.id === c.id ? 'active-channel' : ''}">
-                    <i data-lucide="${c.type === 'TEXT' ? 'hash' : 'volume-2'}" width="16"></i> ${c.name}
-                </div>
-            `).join('');
+            container.innerHTML = state.activeServer.channels.map(c => {
+                let channelHtml = `
+                    <div onclick="joinChannel('${c.id}', '${c.type}')" 
+                         class="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-[#35373C] hover:text-white ${state.activeChannel?.id === c.id ? 'active-channel' : ''}">
+                        <i data-lucide="${c.type === 'TEXT' ? 'hash' : 'volume-2'}" width="16"></i> ${c.name}
+                    </div>
+                `;
+                
+                // Если это голосовой канал и есть активные пользователи
+                if(c.type === 'VOICE' && state.voiceUsers[c.id] && state.voiceUsers[c.id].length > 0) {
+                    const usersHtml = state.voiceUsers[c.id].map(u => `
+                        <div class="voice-user flex items-center gap-2 py-1 px-2 rounded hover:bg-[#35373C] text-gray-400">
+                            <img src="${u.avatar}" class="w-5 h-5 rounded-full">
+                            <span class="text-xs">${u.username}</span>
+                        </div>
+                    `).join('');
+                    channelHtml += usersHtml;
+                }
+                
+                return channelHtml;
+            }).join('');
             
             lucide.createIcons();
         }
@@ -411,7 +430,7 @@
             document.getElementById('chat-view').classList.toggle('hidden', type !== 'TEXT');
             document.getElementById('voice-view').classList.toggle('hidden', type !== 'VOICE');
             
-            selectServer(state.activeServer);
+            renderChannelsList();
 
             if (type === 'TEXT') {
                 leaveVoice();
@@ -494,37 +513,49 @@
             }
         });
 
+        // === ГОЛОСОВЫЕ ЗВОНКИ ===
         const peersRef = [];
 
         function startVoice(channelId) {
             navigator.mediaDevices.getUserMedia({ video: false, audio: true }).then(stream => {
                 state.myStream = stream;
                 state.inCall = true;
-                addAudioBox(stream, 'Вы', true);
+                
+                // Добавляем себя в список
+                addAudioBox(stream, state.user.username, state.user.avatar, true);
                 document.getElementById('voice-status').innerText = 'В канале: ' + state.activeChannel.name;
 
                 socket.emit('join-voice', { channelId, userId: state.user.id });
 
                 socket.on('all-users', users => {
-                    users.forEach(userID => {
-                        const peer = createPeer(userID, socket.id, stream);
-                        peersRef.push({ peerID: userID, peer });
+                    users.forEach(userInfo => {
+                        const peer = createPeer(userInfo.socketId, socket.id, stream, userInfo);
+                        peersRef.push({ peerID: userInfo.socketId, peer, userInfo });
                     });
                 });
 
                 socket.on('user-joined', payload => {
-                    const peer = addPeer(payload.signal, payload.callerID, stream);
-                    peersRef.push({ peerID: payload.callerID, peer });
+                    const peer = addPeer(payload.signal, payload.callerID, stream, payload.userInfo);
+                    peersRef.push({ peerID: payload.callerID, peer, userInfo: payload.userInfo });
                 });
 
                 socket.on('receiving-returned-signal', payload => {
                     const item = peersRef.find(p => p.peerID === payload.id);
-                    if(item) item.peer.signal(payload.signal);
+                    if(item) {
+                        item.peer.signal(payload.signal);
+                        if(payload.userInfo) {
+                            item.userInfo = payload.userInfo;
+                        }
+                    }
                 });
 
                 socket.on('user-left', id => {
                     const peerObj = peersRef.find(p => p.peerID === id);
-                    if(peerObj) peerObj.peer.destroy();
+                    if(peerObj) {
+                        peerObj.peer.destroy();
+                        const index = peersRef.findIndex(p => p.peerID === id);
+                        if(index !== -1) peersRef.splice(index, 1);
+                    }
                     const el = document.getElementById(`audio-${id}`);
                     if(el) el.remove();
                 });
@@ -545,31 +576,41 @@
             navigator.mediaDevices.getUserMedia({ video: false, audio: true }).then(stream => {
                 state.myStream = stream;
                 state.inCall = true;
-                addAudioBox(stream, 'Вы', true);
+                
+                addAudioBox(stream, state.user.username, state.user.avatar, true);
                 document.getElementById('voice-status').innerText = 'Звонок с ' + state.activeFriend.username;
 
                 socket.emit('join-voice', { channelId: dmVoiceChannel, userId: state.user.id });
 
                 socket.on('all-users', users => {
-                    users.forEach(userID => {
-                        const peer = createPeer(userID, socket.id, stream);
-                        peersRef.push({ peerID: userID, peer });
+                    users.forEach(userInfo => {
+                        const peer = createPeer(userInfo.socketId, socket.id, stream, userInfo);
+                        peersRef.push({ peerID: userInfo.socketId, peer, userInfo });
                     });
                 });
 
                 socket.on('user-joined', payload => {
-                    const peer = addPeer(payload.signal, payload.callerID, stream);
-                    peersRef.push({ peerID: payload.callerID, peer });
+                    const peer = addPeer(payload.signal, payload.callerID, stream, payload.userInfo);
+                    peersRef.push({ peerID: payload.callerID, peer, userInfo: payload.userInfo });
                 });
 
                 socket.on('receiving-returned-signal', payload => {
                     const item = peersRef.find(p => p.peerID === payload.id);
-                    if(item) item.peer.signal(payload.signal);
+                    if(item) {
+                        item.peer.signal(payload.signal);
+                        if(payload.userInfo) {
+                            item.userInfo = payload.userInfo;
+                        }
+                    }
                 });
 
                 socket.on('user-left', id => {
                     const peerObj = peersRef.find(p => p.peerID === id);
-                    if(peerObj) peerObj.peer.destroy();
+                    if(peerObj) {
+                        peerObj.peer.destroy();
+                        const index = peersRef.findIndex(p => p.peerID === id);
+                        if(index !== -1) peersRef.splice(index, 1);
+                    }
                     const el = document.getElementById(`audio-${id}`);
                     if(el) el.remove();
                 });
@@ -578,38 +619,72 @@
             });
         }
 
-        function createPeer(userToSignal, callerID, stream) {
+        function createPeer(userToSignal, callerID, stream, userInfo) {
             const peer = new SimplePeer({ initiator: true, trickle: false, stream });
-            peer.on('signal', signal => socket.emit('sending-signal', { userToSignal, callerID, signal }));
-            peer.on('stream', stream => addAudioBox(stream, 'Пользователь'));
+            peer.on('signal', signal => {
+                socket.emit('sending-signal', { 
+                    userToSignal, 
+                    callerID, 
+                    signal,
+                    userInfo: {
+                        userId: state.user.id,
+                        username: state.user.username,
+                        avatar: state.user.avatar
+                    }
+                });
+            });
+            peer.on('stream', remoteStream => {
+                if(userInfo) {
+                    addAudioBox(remoteStream, userInfo.username, userInfo.avatar, false);
+                }
+            });
             return peer;
         }
 
-        function addPeer(incomingSignal, callerID, stream) {
+        function addPeer(incomingSignal, callerID, stream, userInfo) {
             const peer = new SimplePeer({ initiator: false, trickle: false, stream });
-            peer.on('signal', signal => socket.emit('returning-signal', { signal, callerID }));
-            peer.on('stream', stream => addAudioBox(stream, 'Пользователь'));
+            peer.on('signal', signal => {
+                socket.emit('returning-signal', { 
+                    signal, 
+                    callerID,
+                    userInfo: {
+                        userId: state.user.id,
+                        username: state.user.username,
+                        avatar: state.user.avatar
+                    }
+                });
+            });
+            peer.on('stream', remoteStream => {
+                if(userInfo) {
+                    addAudioBox(remoteStream, userInfo.username, userInfo.avatar, false);
+                }
+            });
             peer.signal(incomingSignal);
             return peer;
         }
 
-        function addAudioBox(stream, name, isMe = false) {
+        function addAudioBox(stream, username, avatar, isMe = false) {
             const grid = document.getElementById('video-grid');
+            const id = isMe ? 'me' : Date.now();
+            
+            // Проверяем, не добавлен ли уже этот пользователь
+            if(document.getElementById(`audio-${id}`)) return;
+            
             const div = document.createElement('div');
-            div.id = `audio-${isMe ? 'me' : Date.now()}`;
+            div.id = `audio-${id}`;
             div.className = "bg-[#1E1F22] p-6 rounded-lg flex flex-col items-center justify-center border-2 border-green-500";
             div.innerHTML = `
-                <div class="w-20 h-20 rounded-full bg-[#5865F2] mb-3 flex items-center justify-center">
-                    <i data-lucide="user" width="40" class="text-white"></i>
-                </div>
-                <span class="font-bold text-white">${name}</span>
+                <img src="${avatar}" class="w-20 h-20 rounded-full mb-3 border-2 border-[#5865F2]">
+                <span class="font-bold text-white">${username}</span>
             `;
             
-            const audio = document.createElement('audio');
-            audio.srcObject = stream;
-            audio.autoplay = true;
-            if(isMe) audio.muted = true;
-            div.appendChild(audio);
+            if(!isMe) {
+                const audio = document.createElement('audio');
+                audio.srcObject = stream;
+                audio.autoplay = true;
+                div.appendChild(audio);
+            }
+            
             grid.appendChild(div);
             lucide.createIcons();
         }
@@ -629,10 +704,15 @@
             document.getElementById('video-grid').innerHTML = '';
             document.getElementById('voice-view').classList.add('hidden');
             
-            if(state.activeFriend) {
+            // Перенаправляем в текстовый канал
+            if(state.activeServer && state.activeChannel) {
+                // Находим первый текстовый канал
+                const textChannel = state.activeServer.channels.find(c => c.type === 'TEXT');
+                if(textChannel) {
+                    joinChannel(textChannel.id, 'TEXT');
+                }
+            } else if(state.activeFriend) {
                 openDirectMessage(state.activeFriend.id);
-            } else if(state.activeChannel) {
-                document.getElementById('chat-view').classList.remove('hidden');
             }
         }
 
