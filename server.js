@@ -38,11 +38,11 @@ const http = require('http');
 // ============================================
 
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production-min-32-chars';
+const JWT_SECRET = process.env.JWT_SECRET;
 const BCRYPT_ROUNDS = 10;
 
 // Строка подключения к PostgreSQL (Neon)
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_Z5cFkbanSE6Y@ep-jolly-hat-agviai60-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require';
+const DATABASE_URL = process.env.DATABASE_URL;
 
 // ============================================
 // ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
