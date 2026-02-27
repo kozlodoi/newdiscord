@@ -1207,29 +1207,29 @@ app.get('/', (req, res) => {
     // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
     // ============================================
 
-    const API_URL = window.location.origin;
-    const WS_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
+    var API_URL = window.location.origin;
+    var WS_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
 
-    let currentUser = null;
-    let token = null;
-    let ws = null;
-    let servers = [];
-    let currentServer = null;
-    let currentChannel = null;
-    let currentDM = null;
-    let messages = [];
-    let typingUsers = {};
-    let reconnectAttempts = 0;
-    const MAX_RECONNECT_ATTEMPTS = 5;
+    var currentUser = null;
+    var token = null;
+    var ws = null;
+    var servers = [];
+    var currentServer = null;
+    var currentChannel = null;
+    var currentDM = null;
+    var messages = [];
+    var typingUsers = {};
+    var reconnectAttempts = 0;
+    var MAX_RECONNECT_ATTEMPTS = 5;
 
     // WEBRTC
-    let localStream = null;
-    let peerConnections = new Map();
-    let currentVoiceChannel = null;
-    let voiceParticipants = new Map();
-    let isMuted = false;
-    let isDeafened = false;
-    let iceServers = [];
+    var localStream = null;
+    var peerConnections = new Map();
+    var currentVoiceChannel = null;
+    var voiceParticipants = new Map();
+    var isMuted = false;
+    var isDeafened = false;
+    var iceServers = [];
 
     // ============================================
     // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -1239,10 +1239,10 @@ app.get('/', (req, res) => {
     function $$(selector) { return document.querySelectorAll(selector); }
 
     function formatTime(date) {
-        const d = new Date(date);
-        const now = new Date();
-        const isToday = d.toDateString() === now.toDateString();
-        const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        var d = new Date(date);
+        var now = new Date();
+        var isToday = d.toDateString() === now.toDateString();
+        var time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
         if (isToday) return 'Сегодня в ' + time;
         return d.toLocaleDateString('ru-RU') + ' ' + time;
     }
@@ -1252,16 +1252,21 @@ app.get('/', (req, res) => {
     }
 
     function escapeHtml(text) {
-        const div = document.createElement('div');
+        var div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
 
     function getUserVoiceChannel(userId) {
-        if (!currentServer?.channels) return null;
-        for (const channel of currentServer.channels) {
-            if (channel.voiceParticipants?.some(p => p.userId === userId)) {
-                return channel;
+        if (!currentServer || !currentServer.channels) return null;
+        for (var i = 0; i < currentServer.channels.length; i++) {
+            var channel = currentServer.channels[i];
+            if (channel.voiceParticipants) {
+                for (var j = 0; j < channel.voiceParticipants.length; j++) {
+                    if (channel.voiceParticipants[j].userId === userId) {
+                        return channel;
+                    }
+                }
             }
         }
         return null;
@@ -1271,19 +1276,22 @@ app.get('/', (req, res) => {
     // API ЗАПРОСЫ
     // ============================================
 
-    async function api(endpoint, options = {}) {
-        const headers = { 'Content-Type': 'application/json' };
+    function api(endpoint, options) {
+        options = options || {};
+        var headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = 'Bearer ' + token;
 
-        try {
-            const res = await fetch(API_URL + endpoint, { ...options, headers });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Ошибка сервера');
-            return data;
-        } catch (e) {
-            console.error('API Error:', e);
-            throw e;
-        }
+        return fetch(API_URL + endpoint, Object.assign({}, options, { headers: headers }))
+            .then(function(res) {
+                return res.json().then(function(data) {
+                    if (!res.ok) throw new Error(data.error || 'Ошибка сервера');
+                    return data;
+                });
+            })
+            .catch(function(e) {
+                console.error('API Error:', e);
+                throw e;
+            });
     }
 
     // ============================================
@@ -1295,24 +1303,24 @@ app.get('/', (req, res) => {
 
         ws = new WebSocket(WS_URL);
 
-        ws.onopen = () => {
+        ws.onopen = function() {
             console.log('WebSocket connected');
             reconnectAttempts = 0;
             if (token) {
-                ws.send(JSON.stringify({ type: 'AUTH', token }));
+                ws.send(JSON.stringify({ type: 'AUTH', token: token }));
             }
         };
 
-        ws.onmessage = (event) => {
+        ws.onmessage = function(event) {
             try {
-                const data = JSON.parse(event.data);
+                var data = JSON.parse(event.data);
                 handleWebSocketMessage(data);
             } catch (e) {
                 console.error('WS Parse Error:', e);
             }
         };
 
-        ws.onclose = () => {
+        ws.onclose = function() {
             console.log('WebSocket disconnected');
             if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && token) {
                 reconnectAttempts++;
@@ -1320,7 +1328,7 @@ app.get('/', (req, res) => {
             }
         };
 
-        ws.onerror = (error) => {
+        ws.onerror = function(error) {
             console.error('WebSocket error:', error);
         };
     }
@@ -1333,7 +1341,7 @@ app.get('/', (req, res) => {
                 break;
 
             case 'NEW_CHANNEL_MESSAGE':
-                if (data.message.channel_id === currentChannel?.id) {
+                if (currentChannel && data.message.channel_id === currentChannel.id) {
                     messages.push(data.message);
                     renderMessages();
                     scrollToBottom();
@@ -1365,9 +1373,9 @@ app.get('/', (req, res) => {
 
             case 'CHANNEL_DELETED':
                 if (currentServer && data.serverId === currentServer.id) {
-                    currentServer.channels = currentServer.channels.filter(c => c.id !== data.channelId);
-                    if (currentChannel?.id === data.channelId) {
-                        currentChannel = currentServer.channels.find(c => c.type === 'text');
+                    currentServer.channels = currentServer.channels.filter(function(c) { return c.id !== data.channelId; });
+                    if (currentChannel && currentChannel.id === data.channelId) {
+                        currentChannel = currentServer.channels.find(function(c) { return c.type === 'text'; });
                         loadMessages();
                     }
                     renderChannels();
@@ -1375,7 +1383,7 @@ app.get('/', (req, res) => {
                 break;
 
             case 'MEMBER_JOINED':
-                if (currentServer?.id === data.serverId) {
+                if (currentServer && currentServer.id === data.serverId) {
                     if (!currentServer.members) currentServer.members = [];
                     currentServer.members.push(data.member);
                     renderMembers();
@@ -1383,15 +1391,15 @@ app.get('/', (req, res) => {
                 break;
 
             case 'MEMBER_LEFT':
-                if (currentServer?.id === data.serverId) {
-                    currentServer.members = currentServer.members?.filter(m => m.id !== data.userId);
+                if (currentServer && currentServer.id === data.serverId) {
+                    currentServer.members = currentServer.members ? currentServer.members.filter(function(m) { return m.id !== data.userId; }) : [];
                     renderMembers();
                 }
                 break;
 
             case 'SERVER_DELETED':
-                servers = servers.filter(s => s.id !== data.serverId);
-                if (currentServer?.id === data.serverId) {
+                servers = servers.filter(function(s) { return s.id !== data.serverId; });
+                if (currentServer && currentServer.id === data.serverId) {
                     currentServer = null;
                     currentChannel = null;
                 }
@@ -1442,11 +1450,11 @@ app.get('/', (req, res) => {
     }
 
     function handleTypingIndicator(data) {
-        const key = data.channelId || data.odego
+        var key = data.channelId || data.odego;
         typingUsers[key] = { username: data.username, time: Date.now() };
         renderTypingIndicator();
 
-        setTimeout(() => {
+        setTimeout(function() {
             if (typingUsers[key] && Date.now() - typingUsers[key].time > 3000) {
                 delete typingUsers[key];
                 renderTypingIndicator();
@@ -1455,11 +1463,11 @@ app.get('/', (req, res) => {
     }
 
     function renderTypingIndicator() {
-        const indicator = $('.typing-indicator');
+        var indicator = $('.typing-indicator');
         if (!indicator) return;
 
-        const key = currentChannel?.id || currentDM?.id;
-        const typing = typingUsers[key];
+        var key = currentChannel ? currentChannel.id : (currentDM ? currentDM.id : null);
+        var typing = typingUsers[key];
 
         if (typing && typing.username !== currentUser.username) {
             indicator.textContent = typing.username + ' печатает...';
@@ -1469,8 +1477,8 @@ app.get('/', (req, res) => {
     }
 
     function updateUserStatus(userId, status) {
-        if (currentServer?.members) {
-            const member = currentServer.members.find(m => m.id === userId);
+        if (currentServer && currentServer.members) {
+            var member = currentServer.members.find(function(m) { return m.id === userId; });
             if (member) {
                 member.status = status;
                 renderMembers();
@@ -1482,33 +1490,31 @@ app.get('/', (req, res) => {
     // WEBRTC ГОЛОСОВОЙ ЧАТ
     // ============================================
 
-    async function joinVoiceChannel(channel) {
-        if (currentVoiceChannel?.id === channel.id) return;
+    function joinVoiceChannel(channel) {
+        if (currentVoiceChannel && currentVoiceChannel.id === channel.id) return;
 
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
-                },
-                video: false
-            });
-
+        navigator.mediaDevices.getUserMedia({
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            },
+            video: false
+        }).then(function(stream) {
+            localStream = stream;
             ws.send(JSON.stringify({ type: 'VOICE_JOIN', channelId: channel.id }));
-
-        } catch (error) {
+        }).catch(function(error) {
             console.error('Failed to get microphone access:', error);
             alert('Не удалось получить доступ к микрофону. Проверьте разрешения браузера.');
-        }
+        });
     }
 
     function handleVoiceJoined(data) {
-        currentVoiceChannel = currentServer?.channels.find(c => c.id === data.channelId);
+        currentVoiceChannel = currentServer ? currentServer.channels.find(function(c) { return c.id === data.channelId; }) : null;
         if (data.iceServers) iceServers = data.iceServers;
 
         voiceParticipants.clear();
-        data.participants.forEach(p => {
+        data.participants.forEach(function(p) {
             voiceParticipants.set(p.userId, p);
             createPeerConnection(p.userId, true);
         });
@@ -1534,7 +1540,7 @@ app.get('/', (req, res) => {
         voiceParticipants.set(data.user.userId, data.user);
 
         if (currentServer) {
-            const channel = currentServer.channels.find(c => c.id === data.channelId);
+            var channel = currentServer.channels.find(function(c) { return c.id === data.channelId; });
             if (channel) {
                 if (!channel.voiceParticipants) channel.voiceParticipants = [];
                 channel.voiceParticipants.push(data.user);
@@ -1547,19 +1553,19 @@ app.get('/', (req, res) => {
     function handleVoiceUserLeft(data) {
         voiceParticipants.delete(data.userId);
 
-        const pc = peerConnections.get(data.userId);
+        var pc = peerConnections.get(data.userId);
         if (pc) {
             pc.close();
             peerConnections.delete(data.userId);
         }
 
-        const audioEl = document.getElementById('audio-' + data.userId);
+        var audioEl = document.getElementById('audio-' + data.userId);
         if (audioEl) audioEl.remove();
 
         if (currentServer) {
-            const channel = currentServer.channels.find(c => c.id === data.channelId);
+            var channel = currentServer.channels.find(function(c) { return c.id === data.channelId; });
             if (channel && channel.voiceParticipants) {
-                channel.voiceParticipants = channel.voiceParticipants.filter(p => p.userId !== data.userId);
+                channel.voiceParticipants = channel.voiceParticipants.filter(function(p) { return p.userId !== data.userId; });
             }
         }
 
@@ -1567,7 +1573,7 @@ app.get('/', (req, res) => {
     }
 
     function handleVoiceSignal(data) {
-        const signal = data.signal;
+        var signal = data.signal;
 
         if (signal.type === 'offer') {
             handleOffer(data.fromUserId, signal);
@@ -1578,20 +1584,20 @@ app.get('/', (req, res) => {
         }
     }
 
-    async function createPeerConnection(userId, initiator = false) {
-        if (peerConnections.has(userId)) return peerConnections.get(userId);
+    function createPeerConnection(userId, initiator) {
+        if (peerConnections.has(userId)) return Promise.resolve(peerConnections.get(userId));
 
-        const config = { iceServers: iceServers.length > 0 ? iceServers : [{ urls: 'stun:stun.l.google.com:19302' }] };
-        const pc = new RTCPeerConnection(config);
+        var config = { iceServers: iceServers.length > 0 ? iceServers : [{ urls: 'stun:stun.l.google.com:19302' }] };
+        var pc = new RTCPeerConnection(config);
         peerConnections.set(userId, pc);
 
         if (localStream) {
-            localStream.getTracks().forEach(track => {
+            localStream.getTracks().forEach(function(track) {
                 pc.addTrack(track, localStream);
             });
         }
 
-        pc.onicecandidate = (event) => {
+        pc.onicecandidate = function(event) {
             if (event.candidate) {
                 ws.send(JSON.stringify({
                     type: 'VOICE_SIGNAL',
@@ -1601,8 +1607,8 @@ app.get('/', (req, res) => {
             }
         };
 
-        pc.ontrack = (event) => {
-            let audioEl = document.getElementById('audio-' + userId);
+        pc.ontrack = function(event) {
+            var audioEl = document.getElementById('audio-' + userId);
             if (!audioEl) {
                 audioEl = document.createElement('audio');
                 audioEl.id = 'audio-' + userId;
@@ -1618,72 +1624,70 @@ app.get('/', (req, res) => {
         };
 
         if (initiator) {
-            try {
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
+            return pc.createOffer().then(function(offer) {
+                return pc.setLocalDescription(offer);
+            }).then(function() {
                 ws.send(JSON.stringify({
                     type: 'VOICE_SIGNAL',
                     targetUserId: userId,
                     signal: pc.localDescription
                 }));
-            } catch (e) {
+                return pc;
+            }).catch(function(e) {
                 console.error('Error creating offer:', e);
-            }
+                return pc;
+            });
         }
 
-        return pc;
+        return Promise.resolve(pc);
     }
 
-    async function handleOffer(userId, offer) {
-        const pc = await createPeerConnection(userId, false);
-
-        try {
-            await pc.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-
-            ws.send(JSON.stringify({
-                type: 'VOICE_SIGNAL',
-                targetUserId: userId,
-                signal: pc.localDescription
-            }));
-        } catch (e) {
+    function handleOffer(userId, offer) {
+        createPeerConnection(userId, false).then(function(pc) {
+            return pc.setRemoteDescription(new RTCSessionDescription(offer)).then(function() {
+                return pc.createAnswer();
+            }).then(function(answer) {
+                return pc.setLocalDescription(answer);
+            }).then(function() {
+                ws.send(JSON.stringify({
+                    type: 'VOICE_SIGNAL',
+                    targetUserId: userId,
+                    signal: pc.localDescription
+                }));
+            });
+        }).catch(function(e) {
             console.error('Error handling offer:', e);
-        }
+        });
     }
 
-    async function handleAnswer(userId, answer) {
-        const pc = peerConnections.get(userId);
+    function handleAnswer(userId, answer) {
+        var pc = peerConnections.get(userId);
         if (pc) {
-            try {
-                await pc.setRemoteDescription(new RTCSessionDescription(answer));
-            } catch (e) {
+            pc.setRemoteDescription(new RTCSessionDescription(answer)).catch(function(e) {
                 console.error('Error handling answer:', e);
-            }
+            });
         }
     }
 
-    async function handleIceCandidate(userId, candidate) {
-        const pc = peerConnections.get(userId);
+    function handleIceCandidate(userId, candidate) {
+        var pc = peerConnections.get(userId);
         if (pc) {
-            try {
-                await pc.addIceCandidate(new RTCIceCandidate(candidate));
-            } catch (e) {
+            pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(function(e) {
                 console.error('Error adding ICE candidate:', e);
-            }
+            });
         }
     }
 
     function handleVoiceUserMute(data) {
-        const participant = voiceParticipants.get(data.userId);
+        var participant = voiceParticipants.get(data.userId);
         if (participant) {
             participant.muted = data.muted;
         }
 
         if (currentServer) {
-            currentServer.channels.forEach(channel => {
+            currentServer.channels.forEach(function(channel) {
                 if (channel.voiceParticipants) {
-                    const p = channel.voiceParticipants.find(p => p.userId === data.userId);
+                    var p = channel.voiceParticipants.find(function(p) { return p.userId === data.userId; });
                     if (p) p.muted = data.muted;
                 }
             });
@@ -1693,7 +1697,7 @@ app.get('/', (req, res) => {
     }
 
     function handleVoiceUserDeafen(data) {
-        const participant = voiceParticipants.get(data.userId);
+        var participant = voiceParticipants.get(data.userId);
         if (participant) {
             participant.deafened = data.deafened;
             participant.muted = data.muted;
@@ -1704,12 +1708,12 @@ app.get('/', (req, res) => {
 
     function handleVoiceStateUpdate(data) {
         if (currentServer) {
-            const channel = currentServer.channels.find(c => c.id === data.channelId);
+            var channel = currentServer.channels.find(function(c) { return c.id === data.channelId; });
             if (channel) {
                 if (!channel.voiceParticipants) channel.voiceParticipants = [];
 
                 if (data.action === 'join') {
-                    if (!channel.voiceParticipants.find(p => p.userId === data.userId)) {
+                    if (!channel.voiceParticipants.find(function(p) { return p.userId === data.userId; })) {
                         channel.voiceParticipants.push({
                             userId: data.userId,
                             username: data.username,
@@ -1718,7 +1722,7 @@ app.get('/', (req, res) => {
                         });
                     }
                 } else if (data.action === 'leave') {
-                    channel.voiceParticipants = channel.voiceParticipants.filter(p => p.userId !== data.userId);
+                    channel.voiceParticipants = channel.voiceParticipants.filter(function(p) { return p.userId !== data.userId; });
                 }
 
                 renderChannels();
@@ -1748,15 +1752,15 @@ app.get('/', (req, res) => {
     }
 
     function cleanupVoice() {
-        peerConnections.forEach((pc, odego) => {
+        peerConnections.forEach(function(pc, odego) {
             pc.close();
-            const audioEl = document.getElementById('audio-' + odego);
+            var audioEl = document.getElementById('audio-' + odego);
             if (audioEl) audioEl.remove();
         });
         peerConnections.clear();
 
         if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
+            localStream.getTracks().forEach(function(track) { track.stop(); });
             localStream = null;
         }
 
@@ -1769,7 +1773,7 @@ app.get('/', (req, res) => {
         if (!localStream) return;
 
         isMuted = !isMuted;
-        localStream.getAudioTracks().forEach(track => {
+        localStream.getAudioTracks().forEach(function(track) {
             track.enabled = !isMuted;
         });
 
@@ -1782,14 +1786,14 @@ app.get('/', (req, res) => {
     function toggleDeafen() {
         isDeafened = !isDeafened;
 
-        document.querySelectorAll('audio[id^="audio-"]').forEach(audio => {
+        document.querySelectorAll('audio[id^="audio-"]').forEach(function(audio) {
             audio.muted = isDeafened;
         });
 
         if (isDeafened && !isMuted) {
             isMuted = true;
             if (localStream) {
-                localStream.getAudioTracks().forEach(track => {
+                localStream.getAudioTracks().forEach(function(track) {
                     track.enabled = false;
                 });
             }
@@ -1806,27 +1810,28 @@ app.get('/', (req, res) => {
     // ============================================
 
     function render() {
-        const app = $('#app');
+        var app = $('#app');
 
         if (!token || !currentUser) {
             renderAuth();
             return;
         }
 
-        app.innerHTML = \`
-        <div class="app-container">
-            <div class="server-list" id="serverList"></div>
-            \${currentServer ? \`
-                <div class="channel-sidebar" id="channelSidebar"></div>
-                <div class="chat-area" id="chatArea"></div>
-                <div class="members-sidebar" id="membersSidebar"></div>
-            \` : \`
-                <div class="dm-sidebar" id="dmSidebar"></div>
-                <div class="chat-area" id="chatArea"></div>
-            \`}
-        </div>
-        <div id="modalContainer"></div>
-    \`;
+        var html = '<div class="app-container">' +
+            '<div class="server-list" id="serverList"></div>';
+        
+        if (currentServer) {
+            html += '<div class="channel-sidebar" id="channelSidebar"></div>' +
+                '<div class="chat-area" id="chatArea"></div>' +
+                '<div class="members-sidebar" id="membersSidebar"></div>';
+        } else {
+            html += '<div class="dm-sidebar" id="dmSidebar"></div>' +
+                '<div class="chat-area" id="chatArea"></div>';
+        }
+        
+        html += '</div><div id="modalContainer"></div>';
+
+        app.innerHTML = html;
 
         renderServerList();
 
@@ -1841,94 +1846,105 @@ app.get('/', (req, res) => {
     }
 
     function renderAuth() {
-        const app = $('#app');
-        const isLogin = !window.showRegister;
+        var app = $('#app');
+        var isLogin = !window.showRegister;
 
-        app.innerHTML = `
-        <div class="auth-container">
-            <div class="auth-box">
-                <h1>${isLogin ? 'С возвращением!' : 'Создать аккаунт'}</h1>
-                <p>${isLogin ? 'Мы так рады видеть вас снова!' : 'Присоединяйтесь к нам!'}</p>
-                <div id="authError"></div>
-                <form id="authForm">
-                    ${!isLogin ? `
-                        <div class="form-group">
-                            <label>Имя пользователя</label>
-                            <input type="text" id="username" required minlength="3" maxlength="32">
-                        </div>
-                    ` : ''}
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="email" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Пароль</label>
-                        <input type="password" id="password" required minlength="6">
-                    </div>
-                    <button type="submit" class="btn">${isLogin ? 'Войти' : 'Зарегистрироваться'}</button>
-                </form>
-                <div class="auth-switch">
-                    ${isLogin ? 'Нет аккаунта?' : 'Уже есть аккаунт?'}
-                    <a onclick="window.showRegister = ${isLogin}; renderAuth();">${isLogin ? 'Зарегистрироваться' : 'Войти'}</a>
-                </div>
-            </div>
-        </div>
-    `;
+        var html = '<div class="auth-container">' +
+            '<div class="auth-box">' +
+            '<h1>' + (isLogin ? 'С возвращением!' : 'Создать аккаунт') + '</h1>' +
+            '<p>' + (isLogin ? 'Мы так рады видеть вас снова!' : 'Присоединяйтесь к нам!') + '</p>' +
+            '<div id="authError"></div>' +
+            '<form id="authForm">';
+        
+        if (!isLogin) {
+            html += '<div class="form-group">' +
+                '<label>Имя пользователя</label>' +
+                '<input type="text" id="username" required minlength="3" maxlength="32">' +
+                '</div>';
+        }
+        
+        html += '<div class="form-group">' +
+            '<label>Email</label>' +
+            '<input type="email" id="email" required>' +
+            '</div>' +
+            '<div class="form-group">' +
+            '<label>Пароль</label>' +
+            '<input type="password" id="password" required minlength="6">' +
+            '</div>' +
+            '<button type="submit" class="btn">' + (isLogin ? 'Войти' : 'Зарегистрироваться') + '</button>' +
+            '</form>' +
+            '<div class="auth-switch">' +
+            (isLogin ? 'Нет аккаунта?' : 'Уже есть аккаунт?') +
+            ' <a onclick="window.showRegister = ' + isLogin + '; renderAuth();">' + (isLogin ? 'Зарегистрироваться' : 'Войти') + '</a>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
 
-        $('#authForm').onsubmit = async (e) => {
+        app.innerHTML = html;
+
+        $('#authForm').onsubmit = function(e) {
             e.preventDefault();
-            const email = $('#email').value;
-            const password = $('#password').value;
-            const username = $('#username')?.value;
+            var email = $('#email').value;
+            var password = $('#password').value;
+            var usernameEl = $('#username');
+            var username = usernameEl ? usernameEl.value : null;
 
-            try {
-                const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-                const body = isLogin ? { email, password } : { email, password, username };
-                const data = await api(endpoint, { method: 'POST', body: JSON.stringify(body) });
+            var endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+            var body = isLogin ? { email: email, password: password } : { email: email, password: password, username: username };
+            
+            api(endpoint, { method: 'POST', body: JSON.stringify(body) })
+                .then(function(data) {
+                    token = data.token;
+                    currentUser = data.user;
+                    localStorage.setItem('token', token);
 
-                token = data.token;
-                currentUser = data.user;
-                localStorage.setItem('token', token);
-
-                connectWebSocket();
-                await loadServers();
-                render();
-            } catch (e) {
-                $('#authError').innerHTML = '<div class="error-msg">' + e.message + '</div>';
-            }
+                    connectWebSocket();
+                    return loadServers();
+                })
+                .then(function() {
+                    render();
+                })
+                .catch(function(e) {
+                    $('#authError').innerHTML = '<div class="error-msg">' + e.message + '</div>';
+                });
         };
     }
 
     function renderServerList() {
-        const container = $('#serverList');
+        var container = $('#serverList');
         if (!container) return;
 
-        container.innerHTML = `
-        <div class="server-icon home ${!currentServer ? 'active' : ''}" onclick="selectHome()" title="Личные сообщения">🏠</div>
-        <div class="separator"></div>
-        ${servers.map(s => `
-            <div class="server-icon ${currentServer?.id === s.id ? 'active' : ''}" 
-                 onclick="selectServer('${s.id}')" title="${escapeHtml(s.name)}">
-                ${s.icon_url ? `<img src="${s.icon_url}">` : getInitials(s.name)}
-            </div>
-        `).join('')}
-        <div class="server-icon add" onclick="showCreateServerModal()" title="Добавить сервер">+</div>
-    `;
+        var html = '<div class="server-icon home ' + (!currentServer ? 'active' : '') + '" onclick="selectHome()" title="Личные сообщения">🏠</div>' +
+            '<div class="separator"></div>';
+        
+        for (var i = 0; i < servers.length; i++) {
+            var s = servers[i];
+            html += '<div class="server-icon ' + (currentServer && currentServer.id === s.id ? 'active' : '') + '" ' +
+                'onclick="selectServer(\\'' + s.id + '\\')" title="' + escapeHtml(s.name) + '">';
+            if (s.icon_url) {
+                html += '<img src="' + s.icon_url + '">';
+            } else {
+                html += getInitials(s.name);
+            }
+            html += '</div>';
+        }
+        
+        html += '<div class="server-icon add" onclick="showCreateServerModal()" title="Добавить сервер">+</div>';
+
+        container.innerHTML = html;
     }
 
     function renderChannelSidebar() {
-        const container = $('#channelSidebar');
+        var container = $('#channelSidebar');
         if (!container || !currentServer) return;
 
-        container.innerHTML = `
-        <div class="server-header" onclick="showServerSettings()">
-            ${escapeHtml(currentServer.name)}
-            <span>⌄</span>
-        </div>
-        <div class="channel-list" id="channelList"></div>
-        <div id="voiceConnectedPanel"></div>
-        <div class="user-panel" id="userPanel"></div>
-    `;
+        container.innerHTML = '<div class="server-header" onclick="showServerSettings()">' +
+            escapeHtml(currentServer.name) +
+            '<span>⌄</span>' +
+            '</div>' +
+            '<div class="channel-list" id="channelList"></div>' +
+            '<div id="voiceConnectedPanel"></div>' +
+            '<div class="user-panel" id="userPanel"></div>';
 
         renderChannels();
         renderVoiceConnected();
@@ -1936,67 +1952,71 @@ app.get('/', (req, res) => {
     }
 
     function renderChannels() {
-        const container = $('#channelList');
+        var container = $('#channelList');
         if (!container || !currentServer) return;
 
-        const textChannels = currentServer.channels?.filter(c => c.type === 'text') || [];
-        const voiceChannels = currentServer.channels?.filter(c => c.type === 'voice') || [];
+        var channels = currentServer.channels || [];
+        var textChannels = channels.filter(function(c) { return c.type === 'text'; });
+        var voiceChannels = channels.filter(function(c) { return c.type === 'voice'; });
 
-        container.innerHTML = `
-        <div class="channel-category">
-            <span>Текстовые каналы</span>
-            ${currentServer.owner_id === currentUser.id ? '<button onclick="showCreateChannelModal(\'text\')">+</button>' : ''}
-        </div>
-        ${textChannels.map(c => `
-            <div class="channel-item ${currentChannel?.id === c.id ? 'active' : ''}" onclick="selectChannel('${c.id}')">
-                <span class="icon">#</span>
-                <span class="name">${escapeHtml(c.name)}</span>
-                ${currentServer.owner_id === currentUser.id && textChannels.length > 1 ? `
-                    <button class="delete-btn" onclick="event.stopPropagation(); deleteChannel('${c.id}')">×</button>
-                ` : ''}
-            </div>
-        `).join('')}
-        
-        <div class="channel-category">
-            <span>Голосовые каналы</span>
-            ${currentServer.owner_id === currentUser.id ? '<button onclick="showCreateChannelModal(\'voice\')">+</button>' : ''}
-        </div>
-        ${voiceChannels.map(c => {
-            const participants = c.voiceParticipants || [];
-            const hasUsers = participants.length > 0;
-            const isConnected = currentVoiceChannel?.id === c.id;
+        var html = '<div class="channel-category">' +
+            '<span>Текстовые каналы</span>' +
+            (currentServer.owner_id === currentUser.id ? '<button onclick="showCreateChannelModal(\\'text\\')">+</button>' : '') +
+            '</div>';
 
-            return `
-                <div class="voice-channel ${hasUsers ? 'has-users' : ''}">
-                    <div class="channel-item ${isConnected ? 'active' : ''}" onclick="handleVoiceChannelClick('${c.id}')">
-                        <span class="icon">🔊</span>
-                        <span class="name">${escapeHtml(c.name)}</span>
-                        ${currentServer.owner_id === currentUser.id && voiceChannels.length > 1 ? `
-                            <button class="delete-btn" onclick="event.stopPropagation(); deleteChannel('${c.id}')">×</button>
-                        ` : ''}
-                    </div>
-                    ${hasUsers ? `
-                        <div class="voice-participants">
-                            ${participants.map(p => `
-                                <div class="voice-participant ${p.muted ? 'muted' : ''} ${p.deafened ? 'deafened' : ''}">
-                                    <div class="avatar">${getInitials(p.username)}</div>
-                                    <span class="name">${escapeHtml(p.username)}</span>
-                                    <span class="status-icons">
-                                        ${p.muted ? '<span class="mute-icon">🔇</span>' : ''}
-                                        ${p.deafened ? '<span class="deafen-icon">🔕</span>' : ''}
-                                    </span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }).join('')}
-    `;
+        for (var i = 0; i < textChannels.length; i++) {
+            var c = textChannels[i];
+            html += '<div class="channel-item ' + (currentChannel && currentChannel.id === c.id ? 'active' : '') + '" onclick="selectChannel(\\'' + c.id + '\\')">' +
+                '<span class="icon">#</span>' +
+                '<span class="name">' + escapeHtml(c.name) + '</span>';
+            if (currentServer.owner_id === currentUser.id && textChannels.length > 1) {
+                html += '<button class="delete-btn" onclick="event.stopPropagation(); deleteChannel(\\'' + c.id + '\\')">×</button>';
+            }
+            html += '</div>';
+        }
+
+        html += '<div class="channel-category">' +
+            '<span>Голосовые каналы</span>' +
+            (currentServer.owner_id === currentUser.id ? '<button onclick="showCreateChannelModal(\\'voice\\')">+</button>' : '') +
+            '</div>';
+
+        for (var j = 0; j < voiceChannels.length; j++) {
+            var vc = voiceChannels[j];
+            var participants = vc.voiceParticipants || [];
+            var hasUsers = participants.length > 0;
+            var isConnected = currentVoiceChannel && currentVoiceChannel.id === vc.id;
+
+            html += '<div class="voice-channel ' + (hasUsers ? 'has-users' : '') + '">' +
+                '<div class="channel-item ' + (isConnected ? 'active' : '') + '" onclick="handleVoiceChannelClick(\\'' + vc.id + '\\')">' +
+                '<span class="icon">🔊</span>' +
+                '<span class="name">' + escapeHtml(vc.name) + '</span>';
+            if (currentServer.owner_id === currentUser.id && voiceChannels.length > 1) {
+                html += '<button class="delete-btn" onclick="event.stopPropagation(); deleteChannel(\\'' + vc.id + '\\')">×</button>';
+            }
+            html += '</div>';
+
+            if (hasUsers) {
+                html += '<div class="voice-participants">';
+                for (var k = 0; k < participants.length; k++) {
+                    var p = participants[k];
+                    html += '<div class="voice-participant ' + (p.muted ? 'muted' : '') + ' ' + (p.deafened ? 'deafened' : '') + '">' +
+                        '<div class="avatar">' + getInitials(p.username) + '</div>' +
+                        '<span class="name">' + escapeHtml(p.username) + '</span>' +
+                        '<span class="status-icons">' +
+                        (p.muted ? '<span class="mute-icon">🔇</span>' : '') +
+                        (p.deafened ? '<span class="deafen-icon">🔕</span>' : '') +
+                        '</span></div>';
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
     }
 
     function renderVoiceConnected() {
-        const container = $('#voiceConnectedPanel');
+        var container = $('#voiceConnectedPanel');
         if (!container) return;
 
         if (!currentVoiceChannel) {
@@ -2004,234 +2024,228 @@ app.get('/', (req, res) => {
             return;
         }
 
-        container.innerHTML = `
-        <div class="voice-connected">
-            <div class="voice-status">
-                <div class="indicator"></div>
-                <div class="text">
-                    <div class="title">Голосовой канал</div>
-                    <div class="channel">${escapeHtml(currentVoiceChannel.name)}</div>
-                </div>
-            </div>
-            <div class="voice-controls">
-                <button onclick="toggleMute()" class="${isMuted ? 'active' : ''}" title="${isMuted ? 'Включить микрофон' : 'Выключить микрофон'}">
-                    ${isMuted ? '🔇' : '🎤'}
-                </button>
-                <button onclick="toggleDeafen()" class="${isDeafened ? 'active' : ''}" title="${isDeafened ? 'Включить звук' : 'Выключить звук'}">
-                    ${isDeafened ? '🔕' : '🔔'}
-                </button>
-                <button onclick="leaveVoiceChannel()" class="disconnect" title="Отключиться">
-                    📞
-                </button>
-            </div>
-        </div>
-    `;
+        container.innerHTML = '<div class="voice-connected">' +
+            '<div class="voice-status">' +
+            '<div class="indicator"></div>' +
+            '<div class="text">' +
+            '<div class="title">Голосовой канал</div>' +
+            '<div class="channel">' + escapeHtml(currentVoiceChannel.name) + '</div>' +
+            '</div></div>' +
+            '<div class="voice-controls">' +
+            '<button onclick="toggleMute()" class="' + (isMuted ? 'active' : '') + '" title="' + (isMuted ? 'Включить микрофон' : 'Выключить микрофон') + '">' +
+            (isMuted ? '🔇' : '🎤') + '</button>' +
+            '<button onclick="toggleDeafen()" class="' + (isDeafened ? 'active' : '') + '" title="' + (isDeafened ? 'Включить звук' : 'Выключить звук') + '">' +
+            (isDeafened ? '🔕' : '🔔') + '</button>' +
+            '<button onclick="leaveVoiceChannel()" class="disconnect" title="Отключиться">📞</button>' +
+            '</div></div>';
     }
 
     function renderUserPanel() {
-        const container = $('#userPanel');
+        var container = $('#userPanel');
         if (!container) return;
 
-        container.innerHTML = `
-        <div class="avatar">${getInitials(currentUser.username)}</div>
-        <div class="info">
-            <div class="username">${escapeHtml(currentUser.username)}</div>
-            <div class="status">В сети</div>
-        </div>
-        <div class="actions">
-            ${currentVoiceChannel ? `
-                <button onclick="toggleMute()" class="${isMuted ? 'muted' : ''}" title="${isMuted ? 'Вкл. микрофон' : 'Выкл. микрофон'}">
-                    ${isMuted ? '🔇' : '🎤'}
-                </button>
-                <button onclick="toggleDeafen()" class="${isDeafened ? 'muted' : ''}" title="${isDeafened ? 'Вкл. звук' : 'Выкл. звук'}">
-                    ${isDeafened ? '🔕' : '🎧'}
-                </button>
-            ` : ''}
-            <button onclick="logout()" title="Выйти">🚪</button>
-        </div>
-    `;
+        var html = '<div class="avatar">' + getInitials(currentUser.username) + '</div>' +
+            '<div class="info">' +
+            '<div class="username">' + escapeHtml(currentUser.username) + '</div>' +
+            '<div class="status">В сети</div>' +
+            '</div>' +
+            '<div class="actions">';
+        
+        if (currentVoiceChannel) {
+            html += '<button onclick="toggleMute()" class="' + (isMuted ? 'muted' : '') + '" title="' + (isMuted ? 'Вкл. микрофон' : 'Выкл. микрофон') + '">' +
+                (isMuted ? '🔇' : '🎤') + '</button>' +
+                '<button onclick="toggleDeafen()" class="' + (isDeafened ? 'muted' : '') + '" title="' + (isDeafened ? 'Вкл. звук' : 'Выкл. звук') + '">' +
+                (isDeafened ? '🔕' : '🎧') + '</button>';
+        }
+        
+        html += '<button onclick="logout()" title="Выйти">🚪</button></div>';
+
+        container.innerHTML = html;
     }
 
     function renderChatArea() {
-        const container = $('#chatArea');
+        var container = $('#chatArea');
         if (!container) return;
 
         if (!currentChannel) {
-            container.innerHTML = `
-            <div class="empty-state">
-                <div class="icon">💬</div>
-                <h3>Выберите канал</h3>
-                <p>Выберите текстовый канал для начала общения</p>
-            </div>
-        `;
+            container.innerHTML = '<div class="empty-state">' +
+                '<div class="icon">💬</div>' +
+                '<h3>Выберите канал</h3>' +
+                '<p>Выберите текстовый канал для начала общения</p>' +
+                '</div>';
             return;
         }
 
-        container.innerHTML = `
-        <div class="chat-header">
-            <span class="icon">#</span>
-            <span>${escapeHtml(currentChannel.name)}</span>
-        </div>
-        <div class="messages-container" id="messagesContainer"></div>
-        <div class="typing-indicator"></div>
-        <div class="message-input-container">
-            <div class="message-input">
-                <input type="text" id="messageInput" placeholder="Написать в #${escapeHtml(currentChannel.name)}" maxlength="2000">
-                <button onclick="sendMessage()">➤</button>
-            </div>
-        </div>
-    `;
+        container.innerHTML = '<div class="chat-header">' +
+            '<span class="icon">#</span>' +
+            '<span>' + escapeHtml(currentChannel.name) + '</span>' +
+            '</div>' +
+            '<div class="messages-container" id="messagesContainer"></div>' +
+            '<div class="typing-indicator"></div>' +
+            '<div class="message-input-container">' +
+            '<div class="message-input">' +
+            '<input type="text" id="messageInput" placeholder="Написать в #' + escapeHtml(currentChannel.name) + '" maxlength="2000">' +
+            '<button onclick="sendMessage()">➤</button>' +
+            '</div></div>';
 
         renderMessages();
         setupMessageInput();
     }
 
     function renderMessages() {
-        const container = $('#messagesContainer');
+        var container = $('#messagesContainer');
         if (!container) return;
 
         if (messages.length === 0) {
-            container.innerHTML = `
-            <div class="empty-state">
-                <div class="icon">👋</div>
-                <h3>Начните общение!</h3>
-                <p>Это начало канала #${escapeHtml(currentChannel?.name || 'чата')}</p>
-            </div>
-        `;
+            var channelName = currentChannel ? currentChannel.name : 'чата';
+            container.innerHTML = '<div class="empty-state">' +
+                '<div class="icon">👋</div>' +
+                '<h3>Начните общение!</h3>' +
+                '<p>Это начало канала #' + escapeHtml(channelName) + '</p>' +
+                '</div>';
             return;
         }
 
-        container.innerHTML = messages.map(m => `
-        <div class="message">
-            <div class="avatar">${getInitials(m.username || m.sender_username)}</div>
-            <div class="content">
-                <div class="header">
-                    <span class="author">${escapeHtml(m.username || m.sender_username)}</span>
-                    <span class="timestamp">${formatTime(m.created_at)}</span>
-                </div>
-                <div class="text">${escapeHtml(m.content)}</div>
-            </div>
-        </div>
-    `).join('');
+        var html = '';
+        for (var i = 0; i < messages.length; i++) {
+            var m = messages[i];
+            var username = m.username || m.sender_username;
+            html += '<div class="message">' +
+                '<div class="avatar">' + getInitials(username) + '</div>' +
+                '<div class="content">' +
+                '<div class="header">' +
+                '<span class="author">' + escapeHtml(username) + '</span>' +
+                '<span class="timestamp">' + formatTime(m.created_at) + '</span>' +
+                '</div>' +
+                '<div class="text">' + escapeHtml(m.content) + '</div>' +
+                '</div></div>';
+        }
 
+        container.innerHTML = html;
         scrollToBottom();
     }
 
     function renderMembers() {
-        const container = $('#membersSidebar');
-        if (!container || !currentServer?.members) return;
+        var container = $('#membersSidebar');
+        if (!container || !currentServer || !currentServer.members) return;
 
-        const online = currentServer.members.filter(m => m.status === 'online');
-        const offline = currentServer.members.filter(m => m.status !== 'online');
+        var online = currentServer.members.filter(function(m) { return m.status === 'online'; });
+        var offline = currentServer.members.filter(function(m) { return m.status !== 'online'; });
 
-        container.innerHTML = `
-        <div class="members-category">В сети — ${online.length}</div>
-        ${online.map(m => `
-            <div class="member-item" onclick="startDM('${m.id}')">
-                <div class="avatar">
-                    ${getInitials(m.username)}
-                    <div class="status-dot online"></div>
-                </div>
-                <span class="name">${escapeHtml(m.username)}</span>
-                ${getUserVoiceChannel(m.id) ? '<span class="voice-icon">🔊</span>' : ''}
-            </div>
-        `).join('')}
-        <div class="members-category">Не в сети — ${offline.length}</div>
-        ${offline.map(m => `
-            <div class="member-item" onclick="startDM('${m.id}')">
-                <div class="avatar">
-                    ${getInitials(m.username)}
-                    <div class="status-dot offline"></div>
-                </div>
-                <span class="name">${escapeHtml(m.username)}</span>
-            </div>
-        `).join('')}
-    `;
+        var html = '<div class="members-category">В сети — ' + online.length + '</div>';
+        
+        for (var i = 0; i < online.length; i++) {
+            var m = online[i];
+            html += '<div class="member-item" onclick="startDM(\\'' + m.id + '\\')">' +
+                '<div class="avatar">' + getInitials(m.username) +
+                '<div class="status-dot online"></div></div>' +
+                '<span class="name">' + escapeHtml(m.username) + '</span>' +
+                (getUserVoiceChannel(m.id) ? '<span class="voice-icon">🔊</span>' : '') +
+                '</div>';
+        }
+        
+        html += '<div class="members-category">Не в сети — ' + offline.length + '</div>';
+        
+        for (var j = 0; j < offline.length; j++) {
+            var mo = offline[j];
+            html += '<div class="member-item" onclick="startDM(\\'' + mo.id + '\\')">' +
+                '<div class="avatar">' + getInitials(mo.username) +
+                '<div class="status-dot offline"></div></div>' +
+                '<span class="name">' + escapeHtml(mo.username) + '</span>' +
+                '</div>';
+        }
+
+        container.innerHTML = html;
     }
 
     function renderDMSidebar() {
-        const container = $('#dmSidebar');
+        var container = $('#dmSidebar');
         if (!container) return;
 
-        container.innerHTML = `
-        <div class="dm-header">
-            <input type="text" class="dm-search" placeholder="Найти или начать беседу" id="dmSearch">
-        </div>
-        <div class="dm-list" id="dmList"></div>
-        <div class="user-panel" id="userPanel"></div>
-    `;
+        container.innerHTML = '<div class="dm-header">' +
+            '<input type="text" class="dm-search" placeholder="Найти или начать беседу" id="dmSearch">' +
+            '</div>' +
+            '<div class="dm-list" id="dmList"></div>' +
+            '<div class="user-panel" id="userPanel"></div>';
 
         renderDMList();
         renderUserPanel();
 
-        $('#dmSearch').oninput = async (e) => {
-            const query = e.target.value;
+        $('#dmSearch').oninput = function(e) {
+            var query = e.target.value;
             if (query.length < 2) {
                 renderDMList();
                 return;
             }
-            try {
-                const users = await api('/api/users/search?q=' + encodeURIComponent(query));
-                const list = $('#dmList');
-                list.innerHTML = users.map(u => `
-                <div class="dm-item" onclick="startDM('${u.id}')">
-                    <div class="avatar">${getInitials(u.username)}</div>
-                    <span class="name">${escapeHtml(u.username)}</span>
-                </div>
-            `).join('') || '<div class="empty-state"><p>Никого не найдено</p></div>';
-            } catch (e) {}
+            api('/api/users/search?q=' + encodeURIComponent(query))
+                .then(function(users) {
+                    var list = $('#dmList');
+                    if (users.length === 0) {
+                        list.innerHTML = '<div class="empty-state"><p>Никого не найдено</p></div>';
+                        return;
+                    }
+                    var html = '';
+                    for (var i = 0; i < users.length; i++) {
+                        var u = users[i];
+                        html += '<div class="dm-item" onclick="startDM(\\'' + u.id + '\\')">' +
+                            '<div class="avatar">' + getInitials(u.username) + '</div>' +
+                            '<span class="name">' + escapeHtml(u.username) + '</span>' +
+                            '</div>';
+                    }
+                    list.innerHTML = html;
+                })
+                .catch(function() {});
         };
     }
 
-    async function renderDMList() {
-        try {
-            const conversations = await api('/api/dm');
-            const list = $('#dmList');
-            if (!list) return;
+    function renderDMList() {
+        api('/api/dm')
+            .then(function(conversations) {
+                var list = $('#dmList');
+                if (!list) return;
 
-            if (conversations.length === 0) {
-                list.innerHTML = '<div class="empty-state"><p>Нет бесед</p></div>';
-                return;
-            }
+                if (conversations.length === 0) {
+                    list.innerHTML = '<div class="empty-state"><p>Нет бесед</p></div>';
+                    return;
+                }
 
-            list.innerHTML = conversations.map(c => `
-            <div class="dm-item ${currentDM?.id === c.id ? 'active' : ''}" onclick="selectDM('${c.id}', '${escapeHtml(c.username)}')">
-                <div class="avatar">${getInitials(c.username)}</div>
-                <span class="name">${escapeHtml(c.username)}</span>
-            </div>
-        `).join('');
-        } catch (e) {}
+                var html = '';
+                for (var i = 0; i < conversations.length; i++) {
+                    var c = conversations[i];
+                    html += '<div class="dm-item ' + (currentDM && currentDM.id === c.id ? 'active' : '') + '" onclick="selectDM(\\'' + c.id + '\\', \\'' + escapeHtml(c.username) + '\\')">' +
+                        '<div class="avatar">' + getInitials(c.username) + '</div>' +
+                        '<span class="name">' + escapeHtml(c.username) + '</span>' +
+                        '</div>';
+                }
+                list.innerHTML = html;
+            })
+            .catch(function() {});
     }
 
     function renderDMChatArea() {
-        const container = $('#chatArea');
+        var container = $('#chatArea');
         if (!container) return;
 
         if (!currentDM) {
-            container.innerHTML = `
-            <div class="empty-state">
-                <div class="icon">💬</div>
-                <h3>Личные сообщения</h3>
-                <p>Выберите беседу или найдите пользователя</p>
-            </div>
-        `;
+            container.innerHTML = '<div class="empty-state">' +
+                '<div class="icon">💬</div>' +
+                '<h3>Личные сообщения</h3>' +
+                '<p>Выберите беседу или найдите пользователя</p>' +
+                '</div>';
             return;
         }
 
-        container.innerHTML = `
-        <div class="chat-header">
-            <span class="icon">@</span>
-            <span>${escapeHtml(currentDM.username)}</span>
-        </div>
-        <div class="messages-container" id="messagesContainer"></div>
-        <div class="typing-indicator"></div>
-        <div class="message-input-container">
-            <div class="message-input">
-                <input type="text" id="messageInput" placeholder="Написать @${escapeHtml(currentDM.username)}" maxlength="2000">
-                <button onclick="sendDM()">➤</button>
-            </div>
-        </div>
-    `;
+        container.innerHTML = '<div class="chat-header">' +
+            '<span class="icon">@</span>' +
+            '<span>' + escapeHtml(currentDM.username) + '</span>' +
+            '</div>' +
+            '<div class="messages-container" id="messagesContainer"></div>' +
+            '<div class="typing-indicator"></div>' +
+            '<div class="message-input-container">' +
+            '<div class="message-input">' +
+            '<input type="text" id="messageInput" placeholder="Написать @' + escapeHtml(currentDM.username) + '" maxlength="2000">' +
+            '<button onclick="sendDM()">➤</button>' +
+            '</div></div>';
 
         renderMessages();
         setupDMInput();
@@ -2242,120 +2256,111 @@ app.get('/', (req, res) => {
     // ============================================
 
     function showCreateServerModal() {
-        const container = $('#modalContainer');
-        container.innerHTML = `
-        <div class="modal-overlay" onclick="closeModal(event)">
-            <div class="modal" onclick="event.stopPropagation()">
-                <div class="modal-header">
-                    <h2>Создать сервер</h2>
-                    <p>Ваш сервер — это место, где вы общаетесь с друзьями</p>
-                </div>
-                <div class="modal-tabs">
-                    <button class="active" onclick="showCreateTab()">Создать</button>
-                    <button onclick="showJoinTab()">Присоединиться</button>
-                </div>
-                <div class="modal-body" id="modalBody">
-                    <div class="form-group">
-                        <label>Название сервера</label>
-                        <input type="text" id="serverName" placeholder="Мой крутой сервер" maxlength="100">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn secondary" onclick="closeModal()">Отмена</button>
-                    <button class="btn" id="modalAction" onclick="createServer()">Создать</button>
-                </div>
-            </div>
-        </div>
-    `;
+        var container = $('#modalContainer');
+        container.innerHTML = '<div class="modal-overlay" onclick="closeModal(event)">' +
+            '<div class="modal" onclick="event.stopPropagation()">' +
+            '<div class="modal-header">' +
+            '<h2>Создать сервер</h2>' +
+            '<p>Ваш сервер — это место, где вы общаетесь с друзьями</p>' +
+            '</div>' +
+            '<div class="modal-tabs">' +
+            '<button class="active" onclick="showCreateTab()">Создать</button>' +
+            '<button onclick="showJoinTab()">Присоединиться</button>' +
+            '</div>' +
+            '<div class="modal-body" id="modalBody">' +
+            '<div class="form-group">' +
+            '<label>Название сервера</label>' +
+            '<input type="text" id="serverName" placeholder="Мой крутой сервер" maxlength="100">' +
+            '</div></div>' +
+            '<div class="modal-footer">' +
+            '<button class="btn secondary" onclick="closeModal()">Отмена</button>' +
+            '<button class="btn" id="modalAction" onclick="createServer()">Создать</button>' +
+            '</div></div></div>';
     }
 
     window.showCreateTab = function() {
-        $$('.modal-tabs button').forEach(b => b.classList.remove('active'));
-        $$('.modal-tabs button')[0].classList.add('active');
-        $('#modalBody').innerHTML = `
-        <div class="form-group">
-            <label>Название сервера</label>
-            <input type="text" id="serverName" placeholder="Мой крутой сервер" maxlength="100">
-        </div>
-    `;
+        var buttons = $$('.modal-tabs button');
+        for (var i = 0; i < buttons.length; i++) buttons[i].classList.remove('active');
+        buttons[0].classList.add('active');
+        $('#modalBody').innerHTML = '<div class="form-group">' +
+            '<label>Название сервера</label>' +
+            '<input type="text" id="serverName" placeholder="Мой крутой сервер" maxlength="100">' +
+            '</div>';
         $('#modalAction').textContent = 'Создать';
         $('#modalAction').onclick = createServer;
     };
 
     window.showJoinTab = function() {
-        $$('.modal-tabs button').forEach(b => b.classList.remove('active'));
-        $$('.modal-tabs button')[1].classList.add('active');
-        $('#modalBody').innerHTML = `
-        <div class="form-group">
-            <label>Код приглашения</label>
-            <input type="text" id="inviteCode" placeholder="Например: abc123XY" maxlength="10">
-        </div>
-    `;
+        var buttons = $$('.modal-tabs button');
+        for (var i = 0; i < buttons.length; i++) buttons[i].classList.remove('active');
+        buttons[1].classList.add('active');
+        $('#modalBody').innerHTML = '<div class="form-group">' +
+            '<label>Код приглашения</label>' +
+            '<input type="text" id="inviteCode" placeholder="Например: abc123XY" maxlength="10">' +
+            '</div>';
         $('#modalAction').textContent = 'Присоединиться';
         $('#modalAction').onclick = joinServer;
     };
 
     function showCreateChannelModal(type) {
-        const container = $('#modalContainer');
-        container.innerHTML = `
-        <div class="modal-overlay" onclick="closeModal(event)">
-            <div class="modal" onclick="event.stopPropagation()">
-                <div class="modal-header">
-                    <h2>Создать ${type === 'voice' ? 'голосовой' : 'текстовый'} канал</h2>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Название канала</label>
-                        <input type="text" id="channelName" placeholder="${type === 'voice' ? 'Общий голосовой' : 'general'}" maxlength="100">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn secondary" onclick="closeModal()">Отмена</button>
-                    <button class="btn" onclick="createChannel('${type}')">Создать</button>
-                </div>
-            </div>
-        </div>
-    `;
+        var container = $('#modalContainer');
+        var typeName = type === 'voice' ? 'голосовой' : 'текстовый';
+        var placeholder = type === 'voice' ? 'Общий голосовой' : 'general';
+        
+        container.innerHTML = '<div class="modal-overlay" onclick="closeModal(event)">' +
+            '<div class="modal" onclick="event.stopPropagation()">' +
+            '<div class="modal-header">' +
+            '<h2>Создать ' + typeName + ' канал</h2>' +
+            '</div>' +
+            '<div class="modal-body">' +
+            '<div class="form-group">' +
+            '<label>Название канала</label>' +
+            '<input type="text" id="channelName" placeholder="' + placeholder + '" maxlength="100">' +
+            '</div></div>' +
+            '<div class="modal-footer">' +
+            '<button class="btn secondary" onclick="closeModal()">Отмена</button>' +
+            '<button class="btn" onclick="createChannel(\\'' + type + '\\')">Создать</button>' +
+            '</div></div></div>';
     }
 
     function showServerSettings() {
         if (!currentServer) return;
 
-        const container = $('#modalContainer');
-        container.innerHTML = `
-        <div class="modal-overlay" onclick="closeModal(event)">
-            <div class="modal" onclick="event.stopPropagation()">
-                <div class="modal-header">
-                    <h2>${escapeHtml(currentServer.name)}</h2>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Код приглашения</label>
-                        <div class="invite-code" id="inviteCodeDisplay">Загрузка...</div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    ${currentServer.owner_id === currentUser.id ? `
-                        <button class="btn" style="background: var(--red);" onclick="deleteServer()">Удалить сервер</button>
-                    ` : `
-                        <button class="btn" style="background: var(--red);" onclick="leaveServer()">Покинуть сервер</button>
-                    `}
-                    <button class="btn secondary" onclick="closeModal()">Закрыть</button>
-                </div>
-            </div>
-        </div>
-    `;
+        var container = $('#modalContainer');
+        var footerContent = '';
+        
+        if (currentServer.owner_id === currentUser.id) {
+            footerContent = '<button class="btn" style="background: var(--red);" onclick="deleteServer()">Удалить сервер</button>';
+        } else {
+            footerContent = '<button class="btn" style="background: var(--red);" onclick="leaveServer()">Покинуть сервер</button>';
+        }
+        
+        container.innerHTML = '<div class="modal-overlay" onclick="closeModal(event)">' +
+            '<div class="modal" onclick="event.stopPropagation()">' +
+            '<div class="modal-header">' +
+            '<h2>' + escapeHtml(currentServer.name) + '</h2>' +
+            '</div>' +
+            '<div class="modal-body">' +
+            '<div class="form-group">' +
+            '<label>Код приглашения</label>' +
+            '<div class="invite-code" id="inviteCodeDisplay">Загрузка...</div>' +
+            '</div></div>' +
+            '<div class="modal-footer">' +
+            footerContent +
+            '<button class="btn secondary" onclick="closeModal()">Закрыть</button>' +
+            '</div></div></div>';
 
         loadInviteCode();
     }
 
-    async function loadInviteCode() {
-        try {
-            const data = await api('/api/servers/' + currentServer.id + '/invite');
-            $('#inviteCodeDisplay').textContent = data.invite_code;
-        } catch (e) {
-            $('#inviteCodeDisplay').textContent = 'Ошибка загрузки';
-        }
+    function loadInviteCode() {
+        api('/api/servers/' + currentServer.id + '/invite')
+            .then(function(data) {
+                $('#inviteCodeDisplay').textContent = data.invite_code;
+            })
+            .catch(function() {
+                $('#inviteCodeDisplay').textContent = 'Ошибка загрузки';
+            });
     }
 
     function closeModal(event) {
@@ -2367,24 +2372,28 @@ app.get('/', (req, res) => {
     // ДЕЙСТВИЯ
     // ============================================
 
-    async function loadServers() {
-        try {
-            servers = await api('/api/servers');
-        } catch (e) {
-            console.error('Failed to load servers:', e);
-        }
+    function loadServers() {
+        return api('/api/servers')
+            .then(function(data) {
+                servers = data;
+            })
+            .catch(function(e) {
+                console.error('Failed to load servers:', e);
+            });
     }
 
-    async function selectServer(serverId) {
-        try {
-            currentServer = await api('/api/servers/' + serverId);
-            currentChannel = currentServer.channels?.find(c => c.type === 'text');
-            currentDM = null;
-            render();
-            if (currentChannel) loadMessages();
-        } catch (e) {
-            console.error('Failed to select server:', e);
-        }
+    function selectServer(serverId) {
+        api('/api/servers/' + serverId)
+            .then(function(data) {
+                currentServer = data;
+                currentChannel = currentServer.channels ? currentServer.channels.find(function(c) { return c.type === 'text'; }) : null;
+                currentDM = null;
+                render();
+                if (currentChannel) loadMessages();
+            })
+            .catch(function(e) {
+                console.error('Failed to select server:', e);
+            });
     }
 
     function selectHome() {
@@ -2393,8 +2402,9 @@ app.get('/', (req, res) => {
         render();
     }
 
-    async function selectChannel(channelId) {
-        const channel = currentServer?.channels?.find(c => c.id === channelId);
+    function selectChannel(channelId) {
+        if (!currentServer || !currentServer.channels) return;
+        var channel = currentServer.channels.find(function(c) { return c.id === channelId; });
         if (!channel || channel.type !== 'text') return;
 
         currentChannel = channel;
@@ -2403,212 +2413,237 @@ app.get('/', (req, res) => {
     }
 
     function handleVoiceChannelClick(channelId) {
-        const channel = currentServer?.channels?.find(c => c.id === channelId);
+        if (!currentServer || !currentServer.channels) return;
+        var channel = currentServer.channels.find(function(c) { return c.id === channelId; });
         if (!channel || channel.type !== 'voice') return;
 
-        if (currentVoiceChannel?.id === channelId) {
+        if (currentVoiceChannel && currentVoiceChannel.id === channelId) {
             return;
         }
 
         joinVoiceChannel(channel);
     }
 
-    async function loadMessages() {
+    function loadMessages() {
         if (!currentChannel) return;
-        try {
-            messages = await api('/api/channels/' + currentChannel.id + '/messages?limit=50');
-            renderMessages();
-        } catch (e) {
-            console.error('Failed to load messages:', e);
-        }
+        api('/api/channels/' + currentChannel.id + '/messages?limit=50')
+            .then(function(data) {
+                messages = data;
+                renderMessages();
+            })
+            .catch(function(e) {
+                console.error('Failed to load messages:', e);
+            });
     }
 
     function setupMessageInput() {
-        const input = $('#messageInput');
+        var input = $('#messageInput');
         if (!input) return;
 
-        input.onkeydown = (e) => {
+        input.onkeydown = function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
             }
         };
 
-        let typingTimeout;
-        input.oninput = () => {
+        var typingTimeout;
+        input.oninput = function() {
             clearTimeout(typingTimeout);
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'TYPING_START', channelId: currentChannel.id }));
             }
-            typingTimeout = setTimeout(() => {}, 3000);
+            typingTimeout = setTimeout(function() {}, 3000);
         };
 
         input.focus();
     }
 
     function sendMessage() {
-        const input = $('#messageInput');
-        const content = input?.value?.trim();
+        var input = $('#messageInput');
+        var content = input && input.value ? input.value.trim() : '';
         if (!content || !currentChannel) return;
 
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({
                 type: 'CHANNEL_MESSAGE',
                 channelId: currentChannel.id,
-                content
+                content: content
             }));
         }
 
         input.value = '';
     }
 
-    async function selectDM(userId, username) {
-        currentDM = { id: userId, username };
-        try {
-            messages = await api('/api/dm/' + userId + '?limit=50');
-            renderDMChatArea();
-        } catch (e) {
-            console.error('Failed to load DMs:', e);
-        }
+    function selectDM(userId, username) {
+        currentDM = { id: userId, username: username };
+        api('/api/dm/' + userId + '?limit=50')
+            .then(function(data) {
+                messages = data;
+                renderDMChatArea();
+            })
+            .catch(function(e) {
+                console.error('Failed to load DMs:', e);
+            });
     }
 
-    async function startDM(userId) {
+    function startDM(userId) {
         currentServer = null;
         currentChannel = null;
-        try {
-            const user = await api('/api/users/' + userId);
-            currentDM = { id: userId, username: user.username };
-            messages = await api('/api/dm/' + userId + '?limit=50');
-            render();
-        } catch (e) {
-            console.error('Failed to start DM:', e);
-        }
+        api('/api/users/' + userId)
+            .then(function(user) {
+                currentDM = { id: userId, username: user.username };
+                return api('/api/dm/' + userId + '?limit=50');
+            })
+            .then(function(data) {
+                messages = data;
+                render();
+            })
+            .catch(function(e) {
+                console.error('Failed to start DM:', e);
+            });
     }
 
     function setupDMInput() {
-        const input = $('#messageInput');
+        var input = $('#messageInput');
         if (!input) return;
 
-        input.onkeydown = (e) => {
+        input.onkeydown = function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendDM();
             }
         };
 
-        let typingTimeout;
-        input.oninput = () => {
+        var typingTimeout;
+        input.oninput = function() {
             clearTimeout(typingTimeout);
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'TYPING_START', recipientId: currentDM.id }));
             }
-            typingTimeout = setTimeout(() => {}, 3000);
+            typingTimeout = setTimeout(function() {}, 3000);
         };
 
         input.focus();
     }
 
     function sendDM() {
-        const input = $('#messageInput');
-        const content = input?.value?.trim();
+        var input = $('#messageInput');
+        var content = input && input.value ? input.value.trim() : '';
         if (!content || !currentDM) return;
 
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({
                 type: 'DIRECT_MESSAGE',
                 recipientId: currentDM.id,
-                content
+                content: content
             }));
         }
 
         input.value = '';
     }
 
-    async function createServer() {
-        const name = $('#serverName')?.value?.trim();
-        if (!name) return alert('Введите название');
+    function createServer() {
+        var nameEl = $('#serverName');
+        var name = nameEl && nameEl.value ? nameEl.value.trim() : '';
+        if (!name) {
+            alert('Введите название');
+            return;
+        }
 
-        try {
-            const server = await api('/api/servers', {
-                method: 'POST',
-                body: JSON.stringify({ name })
+        api('/api/servers', {
+            method: 'POST',
+            body: JSON.stringify({ name: name })
+        })
+            .then(function(server) {
+                servers.push(server);
+                closeModal();
+                selectServer(server.id);
+            })
+            .catch(function(e) {
+                alert(e.message);
             });
-            servers.push(server);
-            closeModal();
-            selectServer(server.id);
-        } catch (e) {
-            alert(e.message);
-        }
     }
 
-    async function joinServer() {
-        const code = $('#inviteCode')?.value?.trim();
-        if (!code) return alert('Введите код');
-
-        try {
-            const server = await api('/api/servers/join/' + code, { method: 'POST' });
-            servers.push(server);
-            closeModal();
-            selectServer(server.id);
-        } catch (e) {
-            alert(e.message);
+    function joinServer() {
+        var codeEl = $('#inviteCode');
+        var code = codeEl && codeEl.value ? codeEl.value.trim() : '';
+        if (!code) {
+            alert('Введите код');
+            return;
         }
-    }
 
-    async function createChannel(type) {
-        const name = $('#channelName')?.value?.trim();
-        if (!name) return alert('Введите название');
-
-        try {
-            await api('/api/servers/' + currentServer.id + '/channels', {
-                method: 'POST',
-                body: JSON.stringify({ name, type })
+        api('/api/servers/join/' + code, { method: 'POST' })
+            .then(function(server) {
+                servers.push(server);
+                closeModal();
+                selectServer(server.id);
+            })
+            .catch(function(e) {
+                alert(e.message);
             });
-            closeModal();
-        } catch (e) {
-            alert(e.message);
-        }
     }
 
-    async function deleteChannel(channelId) {
+    function createChannel(type) {
+        var nameEl = $('#channelName');
+        var name = nameEl && nameEl.value ? nameEl.value.trim() : '';
+        if (!name) {
+            alert('Введите название');
+            return;
+        }
+
+        api('/api/servers/' + currentServer.id + '/channels', {
+            method: 'POST',
+            body: JSON.stringify({ name: name, type: type })
+        })
+            .then(function() {
+                closeModal();
+            })
+            .catch(function(e) {
+                alert(e.message);
+            });
+    }
+
+    function deleteChannel(channelId) {
         if (!confirm('Удалить канал?')) return;
-        try {
-            await api('/api/channels/' + channelId, { method: 'DELETE' });
-        } catch (e) {
-            alert(e.message);
-        }
+        api('/api/channels/' + channelId, { method: 'DELETE' })
+            .catch(function(e) {
+                alert(e.message);
+            });
     }
 
-    async function deleteServer() {
+    function deleteServer() {
         if (!confirm('Вы уверены? Это действие нельзя отменить!')) return;
-        try {
-            await api('/api/servers/' + currentServer.id, { method: 'DELETE' });
-            servers = servers.filter(s => s.id !== currentServer.id);
-            currentServer = null;
-            currentChannel = null;
-            closeModal();
-            render();
-        } catch (e) {
-            alert(e.message);
-        }
+        api('/api/servers/' + currentServer.id, { method: 'DELETE' })
+            .then(function() {
+                servers = servers.filter(function(s) { return s.id !== currentServer.id; });
+                currentServer = null;
+                currentChannel = null;
+                closeModal();
+                render();
+            })
+            .catch(function(e) {
+                alert(e.message);
+            });
     }
 
-    async function leaveServer() {
+    function leaveServer() {
         if (!confirm('Покинуть сервер?')) return;
-        try {
-            await api('/api/servers/' + currentServer.id + '/leave', { method: 'POST' });
-            servers = servers.filter(s => s.id !== currentServer.id);
-            currentServer = null;
-            currentChannel = null;
-            closeModal();
-            render();
-        } catch (e) {
-            alert(e.message);
-        }
+        api('/api/servers/' + currentServer.id + '/leave', { method: 'POST' })
+            .then(function() {
+                servers = servers.filter(function(s) { return s.id !== currentServer.id; });
+                currentServer = null;
+                currentChannel = null;
+                closeModal();
+                render();
+            })
+            .catch(function(e) {
+                alert(e.message);
+            });
     }
 
     function scrollToBottom() {
-        const container = $('#messagesContainer');
+        var container = $('#messagesContainer');
         if (container) {
             container.scrollTop = container.scrollHeight;
         }
@@ -2659,21 +2694,27 @@ app.get('/', (req, res) => {
     // ИНИЦИАЛИЗАЦИЯ
     // ============================================
 
-    async function init() {
+    function init() {
         token = localStorage.getItem('token');
 
         if (token) {
-            try {
-                currentUser = await api('/api/auth/me');
-                connectWebSocket();
-                await loadServers();
-            } catch (e) {
-                token = null;
-                localStorage.removeItem('token');
-            }
+            api('/api/auth/me')
+                .then(function(user) {
+                    currentUser = user;
+                    connectWebSocket();
+                    return loadServers();
+                })
+                .then(function() {
+                    render();
+                })
+                .catch(function() {
+                    token = null;
+                    localStorage.removeItem('token');
+                    render();
+                });
+        } else {
+            render();
         }
-
-        render();
     }
 
     init();
