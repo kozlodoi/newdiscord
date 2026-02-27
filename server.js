@@ -17,9 +17,9 @@ const http = require('http');
 // ============================================
 
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
 const BCRYPT_ROUNDS = 10;
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_Z5cFkbanSE6Y@ep-jolly-hat-a5iai60-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require';
+const DATABASE_URL = process.env.DATABASE_URL;
 
 // TURN/STUN серверы для WebRTC
 const ICE_SERVERS = [
