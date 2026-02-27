@@ -1813,7 +1813,7 @@ app.get('/', (req, res) => {
             return;
         }
 
-        app.innerHTML = `
+        app.innerHTML = \`
         <div class="app-container">
             <div class="server-list" id="serverList"></div>
             ${currentServer ? `
@@ -1826,7 +1826,7 @@ app.get('/', (req, res) => {
             `}
         </div>
         <div id="modalContainer"></div>
-    `;
+    \`;
 
         renderServerList();
 
