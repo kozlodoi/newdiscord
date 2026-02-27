@@ -1240,13 +1240,13 @@ app.get('/', (req, res) => {
         return div.innerHTML;
     }
 
-    function getUserVoiceChannel(userId) {
+    function getUserVoiceChannel(odego) {
         if (!currentServer || !currentServer.channels) return null;
         for (var i = 0; i < currentServer.channels.length; i++) {
             var channel = currentServer.channels[i];
             if (channel.type === 'voice' && channel.voiceParticipants) {
                 for (var j = 0; j < channel.voiceParticipants.length; j++) {
-                    if (channel.voiceParticipants[j].odego === userId) {
+                    if (channel.voiceParticipants[j].odego === odego) {
                         return channel;
                     }
                 }
@@ -1425,9 +1425,9 @@ app.get('/', (req, res) => {
         }
     }
 
-    function updateUserStatus(userId, status) {
+    function updateUserStatus(odego, status) {
         if (currentServer && currentServer.members) {
-            var member = currentServer.members.find(function(m) { return m.id === userId; });
+            var member = currentServer.members.find(function(m) { return m.id === odego; });
             if (member) {
                 member.status = status;
                 renderMembers();
@@ -1435,12 +1435,20 @@ app.get('/', (req, res) => {
         }
     }
 
+    // ============================================
+    // ИСПРАВЛЕННЫЙ ГОЛОСОВОЙ ЧАТ
+    // ============================================
+
     function joinVoiceChannel(channel) {
         if (currentVoiceChannel && currentVoiceChannel.id === channel.id) return;
+        
+        console.log('[VOICE] Requesting microphone access for channel:', channel.name);
+        
         navigator.mediaDevices.getUserMedia({
             audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
             video: false
         }).then(function(stream) {
+            console.log('[VOICE] Got microphone access');
             localStream = stream;
             if (isMuted) {
                 localStream.getAudioTracks().forEach(function(track) { track.enabled = false; });
@@ -1453,22 +1461,34 @@ app.get('/', (req, res) => {
     }
 
     function handleVoiceJoined(data) {
+        console.log('[VOICE] Successfully joined channel:', data.channelId, 'Existing participants:', data.participants);
+        
         if (currentServer) {
             currentVoiceChannel = currentServer.channels.find(function(c) { return c.id === data.channelId; });
         }
         if (data.iceServers) iceServers = data.iceServers;
+        
+        // Очищаем старые соединения
         voiceParticipants.clear();
         pendingCandidates.clear();
-        if (data.participants && data.participants.length > 0) {
-            data.participants.forEach(function(p) {
-                voiceParticipants.set(p.odego, p);
-                createPeerConnection(p.odego, true);
-            });
-        }
+        
         isMuted = false;
         isDeafened = false;
+        
+        // Добавляем существующих участников и создаём соединения
+        // МЫ (присоединяющийся) создаём offer для каждого существующего участника
+        if (data.participants && data.participants.length > 0) {
+            data.participants.forEach(function(p) {
+                console.log('[VOICE] Will create offer to existing participant:', p.username, p.odego);
+                voiceParticipants.set(p.odego, p);
+                createPeerConnection(p.odego, true); // true = мы инициаторы
+            });
+        }
+        
+        // Обновляем список участников канала для UI
         if (currentVoiceChannel) {
             currentVoiceChannel.voiceParticipants = Array.from(voiceParticipants.values());
+            // Добавляем себя в список
             currentVoiceChannel.voiceParticipants.push({
                 odego: currentUser.id,
                 username: currentUser.username,
@@ -1476,58 +1496,140 @@ app.get('/', (req, res) => {
                 deafened: false
             });
         }
+        
         renderChannels();
         renderUserPanel();
         renderVoiceConnected();
     }
 
     function handleVoiceLeft(data) {
+        console.log('[VOICE] Left channel:', data.channelId);
+        
+        // Удаляем себя из списка участников канала
+        if (currentServer) {
+            var channel = currentServer.channels.find(function(c) { return c.id === data.channelId; });
+            if (channel && channel.voiceParticipants) {
+                channel.voiceParticipants = channel.voiceParticipants.filter(function(p) { 
+                    return p.odego !== currentUser.id; 
+                });
+            }
+        }
+        
         cleanupVoice();
         currentVoiceChannel = null;
+        
         renderChannels();
         renderUserPanel();
         renderVoiceConnected();
     }
 
+    // ИСПРАВЛЕНО: Когда другой пользователь присоединяется
     function handleVoiceUserJoined(data) {
-        if (data.user.odego === currentUser.id) return;
-        if (voiceParticipants.has(data.user.odego)) return;
+        console.log('[VOICE] User joined:', data.user.username, data.user.odego);
+        
+        // Игнорируем если это мы сами
+        if (data.user.odego === currentUser.id) {
+            console.log('[VOICE] Ignoring own join event');
+            return;
+        }
+        
+        // Проверяем что мы в голосовом канале
+        if (!currentVoiceChannel) {
+            console.log('[VOICE] Not in voice channel, just updating UI');
+            // Просто обновляем UI для других серверов
+            if (currentServer) {
+                var channel = currentServer.channels.find(function(c) { return c.id === data.channelId; });
+                if (channel) {
+                    if (!channel.voiceParticipants) channel.voiceParticipants = [];
+                    var exists = channel.voiceParticipants.some(function(p) { return p.odego === data.user.odego; });
+                    if (!exists) channel.voiceParticipants.push(data.user);
+                }
+            }
+            renderChannels();
+            return;
+        }
+        
+        // Проверяем что это тот же канал
+        if (currentVoiceChannel.id !== data.channelId) {
+            console.log('[VOICE] Different channel, just updating UI');
+            if (currentServer) {
+                var channel = currentServer.channels.find(function(c) { return c.id === data.channelId; });
+                if (channel) {
+                    if (!channel.voiceParticipants) channel.voiceParticipants = [];
+                    var exists = channel.voiceParticipants.some(function(p) { return p.odego === data.user.odego; });
+                    if (!exists) channel.voiceParticipants.push(data.user);
+                }
+            }
+            renderChannels();
+            return;
+        }
+        
+        // Проверяем дубликаты
+        if (voiceParticipants.has(data.user.odego)) {
+            console.log('[VOICE] User already in participants, skipping');
+            return;
+        }
+        
+        console.log('[VOICE] Adding new participant and waiting for their offer');
         voiceParticipants.set(data.user.odego, data.user);
-        if (currentServer && currentVoiceChannel) {
-            var channel = currentServer.channels.find(function(c) { return c.id === data.channelId; });
-            if (channel) {
-                if (!channel.voiceParticipants) channel.voiceParticipants = [];
-                var exists = channel.voiceParticipants.some(function(p) { return p.odego === data.user.odego; });
-                if (!exists) channel.voiceParticipants.push(data.user);
+        
+        // Обновляем список участников канала
+        if (currentVoiceChannel) {
+            if (!currentVoiceChannel.voiceParticipants) currentVoiceChannel.voiceParticipants = [];
+            var exists = currentVoiceChannel.voiceParticipants.some(function(p) { return p.odego === data.user.odego; });
+            if (!exists) {
+                currentVoiceChannel.voiceParticipants.push(data.user);
             }
         }
+        
+        // ВАЖНО: Мы НЕ создаём соединение здесь!
+        // Новый участник сам отправит нам offer, потому что он инициатор
+        // Мы просто ждём VOICE_SIGNAL с offer от него
+        
         renderChannels();
     }
 
+    // ИСПРАВЛЕНО: Когда другой пользователь покидает канал
     function handleVoiceUserLeft(data) {
+        console.log('[VOICE] User left:', data.odego, 'from channel:', data.channelId);
+        
+        // Удаляем из voiceParticipants
         voiceParticipants.delete(data.odego);
         pendingCandidates.delete(data.odego);
+        
+        // Закрываем peer connection
         var pc = peerConnections.get(data.odego);
         if (pc) {
+            console.log('[VOICE] Closing peer connection for:', data.odego);
             pc.close();
             peerConnections.delete(data.odego);
         }
+        
+        // Удаляем аудио элемент
         var audioEl = document.getElementById('audio-' + data.odego);
         if (audioEl) {
             audioEl.srcObject = null;
             audioEl.remove();
         }
+        
+        // ИСПРАВЛЕНО: Обновляем список участников в канале
         if (currentServer) {
             var channel = currentServer.channels.find(function(c) { return c.id === data.channelId; });
             if (channel && channel.voiceParticipants) {
-                channel.voiceParticipants = channel.voiceParticipants.filter(function(p) { return p.odego !== data.odego; });
+                channel.voiceParticipants = channel.voiceParticipants.filter(function(p) { 
+                    return p.odego !== data.odego; 
+                });
+                console.log('[VOICE] Updated channel participants:', channel.voiceParticipants.length);
             }
         }
+        
         renderChannels();
     }
 
     function handleVoiceSignal(data) {
         var signal = data.signal;
+        console.log('[VOICE SIGNAL] From:', data.fromUserId, 'Type:', signal.type || 'candidate');
+        
         if (signal.type === 'offer') {
             handleOffer(data.fromUserId, data.fromUsername, signal);
         } else if (signal.type === 'answer') {
@@ -1537,97 +1639,209 @@ app.get('/', (req, res) => {
         }
     }
 
-    function createPeerConnection(userId, initiator) {
-        if (peerConnections.has(userId)) {
-            peerConnections.get(userId).close();
-            peerConnections.delete(userId);
+    function createPeerConnection(odego, initiator) {
+        console.log('[WEBRTC] Creating peer connection to:', odego, 'initiator:', initiator);
+        
+        // Закрываем старое соединение если есть
+        if (peerConnections.has(odego)) {
+            console.log('[WEBRTC] Closing old connection to:', odego);
+            peerConnections.get(odego).close();
+            peerConnections.delete(odego);
         }
-        var config = { iceServers: iceServers.length > 0 ? iceServers : [{ urls: 'stun:stun.l.google.com:19302' }] };
+        
+        var config = { 
+            iceServers: iceServers.length > 0 ? iceServers : [{ urls: 'stun:stun.l.google.com:19302' }] 
+        };
+        
         var pc = new RTCPeerConnection(config);
-        peerConnections.set(userId, pc);
-        pendingCandidates.set(userId, []);
+        peerConnections.set(odego, pc);
+        pendingCandidates.set(odego, []);
+        
+        // Добавляем локальный аудио поток
         if (localStream) {
-            localStream.getTracks().forEach(function(track) { pc.addTrack(track, localStream); });
+            localStream.getTracks().forEach(function(track) { 
+                console.log('[WEBRTC] Adding local track:', track.kind);
+                pc.addTrack(track, localStream); 
+            });
+        } else {
+            console.warn('[WEBRTC] No local stream available!');
         }
+        
+        // Обработка ICE кандидатов
         pc.onicecandidate = function(event) {
             if (event.candidate) {
-                ws.send(JSON.stringify({ type: 'VOICE_SIGNAL', targetUserId: userId, signal: event.candidate }));
+                console.log('[WEBRTC] Sending ICE candidate to:', odego);
+                ws.send(JSON.stringify({ 
+                    type: 'VOICE_SIGNAL', 
+                    targetUserId: odego, 
+                    signal: event.candidate 
+                }));
             }
         };
+        
+        pc.oniceconnectionstatechange = function() {
+            console.log('[WEBRTC] ICE state for', odego, ':', pc.iceConnectionState);
+        };
+        
+        pc.onconnectionstatechange = function() {
+            console.log('[WEBRTC] Connection state for', odego, ':', pc.connectionState);
+        };
+        
+        // Обработка входящего аудио
         pc.ontrack = function(event) {
+            console.log('[WEBRTC] Received remote track from:', odego);
+            
             if (event.streams && event.streams[0]) {
-                var audioEl = document.getElementById('audio-' + userId);
+                var audioEl = document.getElementById('audio-' + odego);
                 if (!audioEl) {
                     audioEl = document.createElement('audio');
-                    audioEl.id = 'audio-' + userId;
+                    audioEl.id = 'audio-' + odego;
                     audioEl.autoplay = true;
                     audioEl.playsInline = true;
                     document.body.appendChild(audioEl);
+                    console.log('[WEBRTC] Created audio element for:', odego);
                 }
                 audioEl.srcObject = event.streams[0];
                 audioEl.muted = isDeafened;
-                audioEl.play().catch(function(e) { console.error('Audio play failed:', e); });
+                audioEl.play().then(function() {
+                    console.log('[WEBRTC] Audio playing for:', odego);
+                }).catch(function(e) { 
+                    console.error('[WEBRTC] Audio play failed:', e); 
+                });
             }
         };
+        
+        // Если мы инициатор, создаём offer
         if (initiator) {
+            console.log('[WEBRTC] Creating offer for:', odego);
             pc.createOffer().then(function(offer) {
                 return pc.setLocalDescription(offer);
             }).then(function() {
-                ws.send(JSON.stringify({ type: 'VOICE_SIGNAL', targetUserId: userId, signal: pc.localDescription }));
-            }).catch(function(e) { console.error('Error creating offer:', e); });
+                console.log('[WEBRTC] Sending offer to:', odego);
+                ws.send(JSON.stringify({ 
+                    type: 'VOICE_SIGNAL', 
+                    targetUserId: odego, 
+                    signal: pc.localDescription 
+                }));
+            }).catch(function(e) { 
+                console.error('[WEBRTC] Error creating offer:', e); 
+            });
         }
+        
         return pc;
     }
 
-    function handleOffer(userId, username, offer) {
-        if (!voiceParticipants.has(userId)) {
-            voiceParticipants.set(userId, { odego: userId, username: username, muted: false, deafened: false });
-        }
-        var pc = createPeerConnection(userId, false);
-        pc.setRemoteDescription(new RTCSessionDescription(offer)).then(function() {
-            var candidates = pendingCandidates.get(userId) || [];
-            candidates.forEach(function(candidate) {
-                pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(function() {});
+    function handleOffer(odego, username, offer) {
+        console.log('[WEBRTC] Handling offer from:', odego, username);
+        
+        // Добавляем участника если ещё нет
+        if (!voiceParticipants.has(odego)) {
+            voiceParticipants.set(odego, { 
+                odego: odego, 
+                username: username, 
+                muted: false, 
+                deafened: false 
             });
-            pendingCandidates.set(userId, []);
+            
+            // Обновляем UI
+            if (currentVoiceChannel) {
+                if (!currentVoiceChannel.voiceParticipants) currentVoiceChannel.voiceParticipants = [];
+                var exists = currentVoiceChannel.voiceParticipants.some(function(p) { return p.odego === odego; });
+                if (!exists) {
+                    currentVoiceChannel.voiceParticipants.push({ 
+                        odego: odego, 
+                        username: username, 
+                        muted: false, 
+                        deafened: false 
+                    });
+                    renderChannels();
+                }
+            }
+        }
+        
+        // Создаём peer connection (мы НЕ инициаторы)
+        var pc = createPeerConnection(odego, false);
+        
+        pc.setRemoteDescription(new RTCSessionDescription(offer)).then(function() {
+            console.log('[WEBRTC] Set remote description (offer) from:', odego);
+            
+            // Применяем отложенные ICE кандидаты
+            var candidates = pendingCandidates.get(odego) || [];
+            candidates.forEach(function(candidate) {
+                pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(function(e) {
+                    console.error('[WEBRTC] Error adding pending candidate:', e);
+                });
+            });
+            pendingCandidates.set(odego, []);
+            
             return pc.createAnswer();
         }).then(function(answer) {
+            console.log('[WEBRTC] Created answer for:', odego);
             return pc.setLocalDescription(answer);
         }).then(function() {
-            ws.send(JSON.stringify({ type: 'VOICE_SIGNAL', targetUserId: userId, signal: pc.localDescription }));
-        }).catch(function(e) { console.error('Error handling offer:', e); });
+            console.log('[WEBRTC] Sending answer to:', odego);
+            ws.send(JSON.stringify({ 
+                type: 'VOICE_SIGNAL', 
+                targetUserId: odego, 
+                signal: pc.localDescription 
+            }));
+        }).catch(function(e) { 
+            console.error('[WEBRTC] Error handling offer:', e); 
+        });
     }
 
-    function handleAnswer(userId, answer) {
-        var pc = peerConnections.get(userId);
-        if (!pc) return;
-        pc.setRemoteDescription(new RTCSessionDescription(answer)).then(function() {
-            var candidates = pendingCandidates.get(userId) || [];
-            candidates.forEach(function(candidate) {
-                pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(function() {});
-            });
-            pendingCandidates.set(userId, []);
-        }).catch(function(e) { console.error('Error handling answer:', e); });
-    }
-
-    function handleIceCandidate(userId, candidate) {
-        var pc = peerConnections.get(userId);
+    function handleAnswer(odego, answer) {
+        console.log('[WEBRTC] Handling answer from:', odego);
+        
+        var pc = peerConnections.get(odego);
         if (!pc) {
-            if (!pendingCandidates.has(userId)) pendingCandidates.set(userId, []);
-            pendingCandidates.get(userId).push(candidate);
+            console.error('[WEBRTC] No peer connection for answer from:', odego);
             return;
         }
+        
+        pc.setRemoteDescription(new RTCSessionDescription(answer)).then(function() {
+            console.log('[WEBRTC] Set remote description (answer) from:', odego);
+            
+            // Применяем отложенные ICE кандидаты
+            var candidates = pendingCandidates.get(odego) || [];
+            candidates.forEach(function(candidate) {
+                pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(function(e) {
+                    console.error('[WEBRTC] Error adding pending candidate:', e);
+                });
+            });
+            pendingCandidates.set(odego, []);
+        }).catch(function(e) { 
+            console.error('[WEBRTC] Error handling answer:', e); 
+        });
+    }
+
+    function handleIceCandidate(odego, candidate) {
+        var pc = peerConnections.get(odego);
+        
+        if (!pc) {
+            console.log('[WEBRTC] Queuing ICE candidate (no connection yet) for:', odego);
+            if (!pendingCandidates.has(odego)) pendingCandidates.set(odego, []);
+            pendingCandidates.get(odego).push(candidate);
+            return;
+        }
+        
         if (pc.remoteDescription) {
-            pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(function() {});
+            pc.addIceCandidate(new RTCIceCandidate(candidate)).then(function() {
+                console.log('[WEBRTC] Added ICE candidate from:', odego);
+            }).catch(function(e) {
+                console.error('[WEBRTC] Error adding ICE candidate:', e);
+            });
         } else {
-            if (!pendingCandidates.has(userId)) pendingCandidates.set(userId, []);
-            pendingCandidates.get(userId).push(candidate);
+            console.log('[WEBRTC] Queuing ICE candidate (no remote desc) for:', odego);
+            if (!pendingCandidates.has(odego)) pendingCandidates.set(odego, []);
+            pendingCandidates.get(odego).push(candidate);
         }
     }
 
     function handleVoiceUserMute(data) {
         var participant = voiceParticipants.get(data.odego);
         if (participant) participant.muted = data.muted;
+        
         if (currentServer) {
             currentServer.channels.forEach(function(channel) {
                 if (channel.voiceParticipants) {
@@ -1648,19 +1862,34 @@ app.get('/', (req, res) => {
         renderChannels();
     }
 
+    // ИСПРАВЛЕНО: Обновление состояния для UI (для пользователей не в голосовом канале)
     function handleVoiceStateUpdate(data) {
+        console.log('[VOICE STATE] Update:', data.action, 'user:', data.odego, 'channel:', data.channelId);
+        
         if (!currentServer) return;
+        
         var channel = currentServer.channels.find(function(c) { return c.id === data.channelId; });
         if (!channel) return;
+        
         if (!channel.voiceParticipants) channel.voiceParticipants = [];
+        
         if (data.action === 'join') {
+            // Проверяем дубликаты
             var exists = channel.voiceParticipants.some(function(p) { return p.odego === data.odego; });
             if (!exists) {
-                channel.voiceParticipants.push({ odego: data.odego, username: data.username, muted: false, deafened: false });
+                channel.voiceParticipants.push({
+                    odego: data.odego,
+                    username: data.username,
+                    muted: false,
+                    deafened: false
+                });
             }
         } else if (data.action === 'leave') {
-            channel.voiceParticipants = channel.voiceParticipants.filter(function(p) { return p.odego !== data.odego; });
+            channel.voiceParticipants = channel.voiceParticipants.filter(function(p) { 
+                return p.odego !== data.odego; 
+            });
         }
+        
         renderChannels();
     }
 
@@ -1675,26 +1904,51 @@ app.get('/', (req, res) => {
 
     function leaveVoiceChannel() {
         if (!currentVoiceChannel) return;
+        
+        console.log('[VOICE] Leaving channel:', currentVoiceChannel.name);
+        
+        var channelId = currentVoiceChannel.id;
+        
         ws.send(JSON.stringify({ type: 'VOICE_LEAVE' }));
+        
+        // Сразу обновляем локальное состояние
+        if (currentServer) {
+            var channel = currentServer.channels.find(function(c) { return c.id === channelId; });
+            if (channel && channel.voiceParticipants) {
+                channel.voiceParticipants = channel.voiceParticipants.filter(function(p) { 
+                    return p.odego !== currentUser.id; 
+                });
+            }
+        }
+        
         cleanupVoice();
         currentVoiceChannel = null;
+        
         renderChannels();
         renderUserPanel();
         renderVoiceConnected();
     }
 
     function cleanupVoice() {
+        console.log('[VOICE] Cleaning up voice resources');
+        
         peerConnections.forEach(function(pc, odego) {
+            console.log('[VOICE] Closing peer connection:', odego);
             pc.close();
             var audioEl = document.getElementById('audio-' + odego);
-            if (audioEl) { audioEl.srcObject = null; audioEl.remove(); }
+            if (audioEl) { 
+                audioEl.srcObject = null; 
+                audioEl.remove(); 
+            }
         });
         peerConnections.clear();
         pendingCandidates.clear();
+        
         if (localStream) {
             localStream.getTracks().forEach(function(track) { track.stop(); });
             localStream = null;
         }
+        
         voiceParticipants.clear();
         isMuted = false;
         isDeafened = false;
@@ -1720,6 +1974,10 @@ app.get('/', (req, res) => {
         renderUserPanel();
         renderVoiceConnected();
     }
+
+    // ============================================
+    // РЕНДЕРИНГ
+    // ============================================
 
     function render() {
         var app = $('#app');
@@ -2148,17 +2406,17 @@ app.get('/', (req, res) => {
         input.value = '';
     }
 
-    function selectDM(userId, username) {
-        currentDM = { id: userId, username: username };
-        api('/api/dm/' + userId + '?limit=50').then(function(data) { messages = data; renderDMChatArea(); }).catch(function(e) { console.error('Failed to load DMs:', e); });
+    function selectDM(odego, username) {
+        currentDM = { id: odego, username: username };
+        api('/api/dm/' + odego + '?limit=50').then(function(data) { messages = data; renderDMChatArea(); }).catch(function(e) { console.error('Failed to load DMs:', e); });
     }
 
-    function startDM(userId) {
+    function startDM(odego) {
         currentServer = null;
         currentChannel = null;
-        api('/api/users/' + userId).then(function(user) {
-            currentDM = { id: userId, username: user.username };
-            return api('/api/dm/' + userId + '?limit=50');
+        api('/api/users/' + odego).then(function(user) {
+            currentDM = { id: odego, username: user.username };
+            return api('/api/dm/' + odego + '?limit=50');
         }).then(function(data) { messages = data; render(); }).catch(function(e) { console.error('Failed to start DM:', e); });
     }
 
