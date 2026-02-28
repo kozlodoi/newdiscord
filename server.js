@@ -2159,29 +2159,6 @@ function getClientHTML() {
         render();
     }
 
-    function handleVoiceUserJoined(data) {
-        var odego = data.user.visitorId || data.user.odego;
-        if (odego === currentUser.id) return;
-        
-        if (currentServer) {
-            var ch = currentServer.channels.find(function(c) { return c.id === data.channelId; });
-            if (ch) {
-                if (!ch.voiceParticipants) ch.voiceParticipants = [];
-                if (!ch.voiceParticipants.some(function(p) { return (p.visitorId || p.odego) === odego; })) {
-                    ch.voiceParticipants.push(data.user);
-                }
-            }
-        }
-        
-        if (currentVoiceChannel && currentVoiceChannel.id === data.channelId) {
-            if (!voiceParticipants.has(odego)) {
-                voiceParticipants.set(odego, data.user);
-            }
-        }
-        
-        renderChannels();
-    }
-
     function handleVoiceUserLeft(data) {
         var odego = data.visitorId;
         
