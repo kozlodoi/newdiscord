@@ -1923,9 +1923,11 @@ function getClientHTML() {
     }
 
     function handleWebSocketMessage(data) {
+        console.log('[WS] Received:', data.type, data);
         switch (data.type) {
             case 'AUTH_SUCCESS':
                 if (data.iceServers) iceServers = data.iceServers;
+                console.log('[AUTH] Success, ICE servers:', iceServers);
                 break;
             case 'NEW_CHANNEL_MESSAGE':
                 if (currentChannel && data.message.channel_id === currentChannel.id) {
@@ -2010,13 +2012,13 @@ function getClientHTML() {
                 handleVoiceSpeaking(data);
                 break;
             case 'VOICE_ERROR':
-                alert('Ошибка: ' + data.error);
+                alert('Ошибка голосового чата: ' + data.error);
                 cleanupVoice();
                 currentVoiceChannel = null;
                 render();
                 break;
             case 'VOICE_KICKED':
-                alert('Вы отключены: ' + data.reason);
+                alert('Вы отключены от голосового канала: ' + data.reason);
                 cleanupVoice();
                 currentVoiceChannel = null;
                 render();
@@ -2052,29 +2054,51 @@ function getClientHTML() {
     }
 
     // ============================================
-    // VOICE CHAT
+    // VOICE CHAT - ИСПРАВЛЕННАЯ ВЕРСИЯ
     // ============================================
 
     function joinVoiceChannel(channel) {
-        if (currentVoiceChannel && currentVoiceChannel.id === channel.id) return;
+        console.log('[VOICE] Attempting to join channel:', channel.id, channel.name);
+        
+        if (currentVoiceChannel && currentVoiceChannel.id === channel.id) {
+            console.log('[VOICE] Already in this channel');
+            return;
+        }
+        
+        // Если уже в другом канале - выйти
+        if (currentVoiceChannel) {
+            console.log('[VOICE] Leaving current channel first');
+            leaveVoiceChannel();
+        }
         
         navigator.mediaDevices.getUserMedia({
             audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
             video: false
         }).then(function(stream) {
+            console.log('[VOICE] Got microphone access');
             localStream = stream;
-            if (isMuted) stream.getAudioTracks().forEach(function(t) { t.enabled = false; });
+            
+            if (isMuted) {
+                stream.getAudioTracks().forEach(function(t) { t.enabled = false; });
+            }
             
             // Setup speaking detection
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            localAnalyser = audioContext.createAnalyser();
-            localAnalyser.fftSize = 256;
-            var source = audioContext.createMediaStreamSource(stream);
-            source.connect(localAnalyser);
-            detectSpeaking();
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                localAnalyser = audioContext.createAnalyser();
+                localAnalyser.fftSize = 256;
+                var source = audioContext.createMediaStreamSource(stream);
+                source.connect(localAnalyser);
+                detectSpeaking();
+            } catch (e) {
+                console.error('[VOICE] Audio context error:', e);
+            }
             
+            // Отправляем запрос на присоединение
             ws.send(JSON.stringify({ type: 'VOICE_JOIN', channelId: channel.id }));
+            
         }).catch(function(e) {
+            console.error('[VOICE] Microphone error:', e);
             alert('Не удалось получить доступ к микрофону: ' + e.message);
         });
     }
@@ -2116,36 +2140,67 @@ function getClientHTML() {
         if (avatar) avatar.classList.toggle('speaking', speakingUsers.has(currentUser.id) && currentVoiceChannel);
     }
 
-    function handleVoiceUserJoined(data) {
-        var odego = data.user.visitorId || data.user.odego;
-        if (odego === currentUser.id) return;
-    
-        console.log('[VOICE] User joined:', odego, data.user.username);
-    
-        if (currentServer) {
-            var ch = currentServer.channels.find(function(c) { return c.id === data.channelId; });
-            if (ch) {
-                if (!ch.voiceParticipants) ch.voiceParticipants = [];
-                if (!ch.voiceParticipants.some(function(p) { return (p.visitorId || p.odego) === odego; })) {
-                    ch.voiceParticipants.push(data.user);
-                }
-            }
+    // ИСПРАВЛЕНО: Обработка успешного подключения к голосовому каналу
+    function handleVoiceJoined(data) {
+        console.log('[VOICE] Successfully joined channel:', data.channelId);
+        console.log('[VOICE] Existing participants:', data.participants);
+        console.log('[VOICE] ICE servers:', data.iceServers);
+        
+        // Сохраняем ICE серверы
+        if (data.iceServers && data.iceServers.length) {
+            iceServers = data.iceServers;
         }
-    
-        // ИСПРАВЛЕНИЕ: Если мы уже в этом голосовом канале, создаём peer connection
-        if (currentVoiceChannel && currentVoiceChannel.id === data.channelId && localStream) {
-            if (!voiceParticipants.has(odego)) {
-                voiceParticipants.set(odego, data.user);
-            }
-            // Мы уже были в канале, поэтому инициируем соединение
-            console.log('[VOICE] Creating peer connection to new user:', odego);
-            createPeerConnection(odego, true);
+        
+        // Находим канал и устанавливаем его как текущий
+        var channel = null;
+        if (currentServer && currentServer.channels) {
+            channel = currentServer.channels.find(function(c) { return c.id === data.channelId; });
         }
-    
-        renderChannels();
+        
+        if (channel) {
+            currentVoiceChannel = channel;
+            
+            // Обновляем список участников в канале
+            if (!channel.voiceParticipants) channel.voiceParticipants = [];
+            
+            // Добавляем себя
+            var meExists = channel.voiceParticipants.some(function(p) {
+                return (p.visitorId || p.odego) === currentUser.id;
+            });
+            if (!meExists) {
+                channel.voiceParticipants.push({
+                    visitorId: currentUser.id,
+                    username: currentUser.username,
+                    muted: isMuted,
+                    deafened: isDeafened
+                });
+            }
+        } else {
+            // Создаём временный объект канала
+            currentVoiceChannel = { id: data.channelId, name: 'Голосовой канал' };
+        }
+        
+        // Очищаем старые соединения
+        voiceParticipants.clear();
+        
+        // Создаём peer connections к существующим участникам
+        if (data.participants && data.participants.length > 0) {
+            data.participants.forEach(function(participant) {
+                var odego = participant.visitorId || participant.odego;
+                console.log('[VOICE] Creating connection to existing participant:', odego, participant.username);
+                voiceParticipants.set(odego, participant);
+                
+                // Мы инициатор, потому что присоединяемся к существующим
+                createPeerConnection(odego, true);
+            });
+        }
+        
+        render();
     }
 
     function handleVoiceLeft(data) {
+        console.log('[VOICE] Left channel:', data.channelId);
+        
         if (currentServer) {
             var ch = currentServer.channels.find(function(c) { return c.id === data.channelId; });
             if (ch && ch.voiceParticipants) {
@@ -2154,23 +2209,67 @@ function getClientHTML() {
                 });
             }
         }
+        
         cleanupVoice();
         currentVoiceChannel = null;
         render();
     }
 
+    // ИСПРАВЛЕНО: Единственная версия функции
+    function handleVoiceUserJoined(data) {
+        var odego = data.user.visitorId || data.user.odego;
+        if (odego === currentUser.id) return;
+        
+        console.log('[VOICE] User joined:', odego, data.user.username);
+        
+        // Обновляем UI списка участников
+        if (currentServer) {
+            var ch = currentServer.channels.find(function(c) { return c.id === data.channelId; });
+            if (ch) {
+                if (!ch.voiceParticipants) ch.voiceParticipants = [];
+                var exists = ch.voiceParticipants.some(function(p) { 
+                    return (p.visitorId || p.odego) === odego; 
+                });
+                if (!exists) {
+                    ch.voiceParticipants.push(data.user);
+                }
+            }
+        }
+        
+        // ВАЖНО: Если мы уже в этом голосовом канале, создаём peer connection
+        if (currentVoiceChannel && currentVoiceChannel.id === data.channelId && localStream) {
+            console.log('[VOICE] We are in this channel, creating peer connection to new user');
+            
+            if (!voiceParticipants.has(odego)) {
+                voiceParticipants.set(odego, data.user);
+            }
+            
+            // Мы уже были в канале, новый пользователь присоединился - МЫ инициируем соединение
+            createPeerConnection(odego, true);
+        }
+        
+        renderChannels();
+    }
+
     function handleVoiceUserLeft(data) {
         var odego = data.visitorId;
+        console.log('[VOICE] User left:', odego);
         
         voiceParticipants.delete(odego);
         pendingCandidates.delete(odego);
         speakingUsers.delete(odego);
         
         var pc = peerConnections.get(odego);
-        if (pc) { pc.close(); peerConnections.delete(odego); }
+        if (pc) { 
+            pc.close(); 
+            peerConnections.delete(odego); 
+        }
         
         var audio = document.getElementById('audio-' + odego);
-        if (audio) { audio.srcObject = null; audio.remove(); }
+        if (audio) { 
+            audio.srcObject = null; 
+            audio.remove(); 
+        }
         
         if (currentServer) {
             var ch = currentServer.channels.find(function(c) { return c.id === data.channelId; });
@@ -2185,54 +2284,109 @@ function getClientHTML() {
     }
 
     function handleVoiceSignal(data) {
+        console.log('[VOICE] Signal from:', data.fromUserId, 'type:', data.signal.type || 'candidate');
+        
         var signal = data.signal;
-        if (signal.type === 'offer') handleOffer(data.fromUserId, data.fromUsername, signal);
-        else if (signal.type === 'answer') handleAnswer(data.fromUserId, signal);
-        else if (signal.candidate) handleIceCandidate(data.fromUserId, signal);
+        if (signal.type === 'offer') {
+            handleOffer(data.fromUserId, data.fromUsername, signal);
+        } else if (signal.type === 'answer') {
+            handleAnswer(data.fromUserId, signal);
+        } else if (signal.candidate) {
+            handleIceCandidate(data.fromUserId, signal);
+        }
     }
 
     function createPeerConnection(odego, initiator) {
+        console.log('[VOICE] Creating peer connection to:', odego, 'initiator:', initiator);
+        
+        // Закрываем существующее соединение если есть
         if (peerConnections.has(odego)) {
+            console.log('[VOICE] Closing existing connection to:', odego);
             peerConnections.get(odego).close();
             peerConnections.delete(odego);
         }
         
-        var pc = new RTCPeerConnection({ 
-            iceServers: iceServers.length ? iceServers : [{ urls: 'stun:stun.l.google.com:19302' }] 
-        });
+        var config = { 
+            iceServers: iceServers.length ? iceServers : [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+        
+        console.log('[VOICE] RTCPeerConnection config:', config);
+        
+        var pc = new RTCPeerConnection(config);
         peerConnections.set(odego, pc);
         pendingCandidates.set(odego, []);
         
+        // Добавляем локальный аудио поток
         if (localStream) {
-            localStream.getTracks().forEach(function(track) { pc.addTrack(track, localStream); });
+            localStream.getTracks().forEach(function(track) { 
+                console.log('[VOICE] Adding track to peer connection:', track.kind);
+                pc.addTrack(track, localStream); 
+            });
+        } else {
+            console.warn('[VOICE] No local stream available!');
         }
         
         pc.onicecandidate = function(e) {
             if (e.candidate) {
-                ws.send(JSON.stringify({ type: 'VOICE_SIGNAL', targetUserId: odego, signal: e.candidate }));
+                console.log('[VOICE] Sending ICE candidate to:', odego);
+                ws.send(JSON.stringify({ 
+                    type: 'VOICE_SIGNAL', 
+                    targetUserId: odego, 
+                    signal: e.candidate 
+                }));
             }
         };
         
+        pc.oniceconnectionstatechange = function() {
+            console.log('[VOICE] ICE connection state with', odego, ':', pc.iceConnectionState);
+        };
+        
+        pc.onconnectionstatechange = function() {
+            console.log('[VOICE] Connection state with', odego, ':', pc.connectionState);
+        };
+        
         pc.ontrack = function(e) {
+            console.log('[VOICE] Received track from:', odego, e.streams);
+            
             if (e.streams && e.streams[0]) {
                 var audio = document.getElementById('audio-' + odego);
                 if (!audio) {
                     audio = document.createElement('audio');
                     audio.id = 'audio-' + odego;
                     audio.autoplay = true;
+                    audio.playsInline = true;
                     document.body.appendChild(audio);
                 }
                 audio.srcObject = e.streams[0];
                 audio.muted = isDeafened;
-                audio.play().catch(function() {});
+                audio.play().then(function() {
+                    console.log('[VOICE] Audio playing from:', odego);
+                }).catch(function(err) {
+                    console.error('[VOICE] Audio play error:', err);
+                });
             }
         };
         
         if (initiator) {
-            pc.createOffer().then(function(offer) {
+            console.log('[VOICE] Creating offer for:', odego);
+            pc.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: false
+            }).then(function(offer) {
+                console.log('[VOICE] Setting local description (offer)');
                 return pc.setLocalDescription(offer);
             }).then(function() {
-                ws.send(JSON.stringify({ type: 'VOICE_SIGNAL', targetUserId: odego, signal: pc.localDescription }));
+                console.log('[VOICE] Sending offer to:', odego);
+                ws.send(JSON.stringify({ 
+                    type: 'VOICE_SIGNAL', 
+                    targetUserId: odego, 
+                    signal: pc.localDescription 
+                }));
+            }).catch(function(err) {
+                console.error('[VOICE] Create offer error:', err);
             });
         }
         
@@ -2240,48 +2394,101 @@ function getClientHTML() {
     }
 
     function handleOffer(odego, username, offer) {
+        console.log('[VOICE] Handling offer from:', odego, username);
+        
         if (!voiceParticipants.has(odego)) {
-            voiceParticipants.set(odego, { visitorId: odego, username: username, muted: false, deafened: false });
+            voiceParticipants.set(odego, { 
+                visitorId: odego, 
+                username: username, 
+                muted: false, 
+                deafened: false 
+            });
+            
             if (currentVoiceChannel) {
                 if (!currentVoiceChannel.voiceParticipants) currentVoiceChannel.voiceParticipants = [];
-                if (!currentVoiceChannel.voiceParticipants.some(function(p) { return (p.visitorId || p.odego) === odego; })) {
-                    currentVoiceChannel.voiceParticipants.push({ visitorId: odego, username: username, muted: false, deafened: false });
+                var exists = currentVoiceChannel.voiceParticipants.some(function(p) { 
+                    return (p.visitorId || p.odego) === odego; 
+                });
+                if (!exists) {
+                    currentVoiceChannel.voiceParticipants.push({ 
+                        visitorId: odego, 
+                        username: username, 
+                        muted: false, 
+                        deafened: false 
+                    });
                     renderChannels();
                 }
             }
         }
         
         var pc = createPeerConnection(odego, false);
+        
         pc.setRemoteDescription(new RTCSessionDescription(offer)).then(function() {
+            console.log('[VOICE] Remote description set, processing pending candidates');
+            
             var candidates = pendingCandidates.get(odego) || [];
-            candidates.forEach(function(c) { pc.addIceCandidate(new RTCIceCandidate(c)).catch(function() {}); });
+            candidates.forEach(function(c) { 
+                pc.addIceCandidate(new RTCIceCandidate(c)).catch(function(e) {
+                    console.error('[VOICE] Add ICE candidate error:', e);
+                }); 
+            });
             pendingCandidates.set(odego, []);
+            
+            console.log('[VOICE] Creating answer for:', odego);
             return pc.createAnswer();
         }).then(function(answer) {
+            console.log('[VOICE] Setting local description (answer)');
             return pc.setLocalDescription(answer);
         }).then(function() {
-            ws.send(JSON.stringify({ type: 'VOICE_SIGNAL', targetUserId: odego, signal: pc.localDescription }));
+            console.log('[VOICE] Sending answer to:', odego);
+            ws.send(JSON.stringify({ 
+                type: 'VOICE_SIGNAL', 
+                targetUserId: odego, 
+                signal: pc.localDescription 
+            }));
+        }).catch(function(err) {
+            console.error('[VOICE] Handle offer error:', err);
         });
     }
 
     function handleAnswer(odego, answer) {
+        console.log('[VOICE] Handling answer from:', odego);
+        
         var pc = peerConnections.get(odego);
-        if (!pc) return;
+        if (!pc) {
+            console.warn('[VOICE] No peer connection for:', odego);
+            return;
+        }
+        
         pc.setRemoteDescription(new RTCSessionDescription(answer)).then(function() {
+            console.log('[VOICE] Remote description set (answer), processing pending candidates');
+            
             var candidates = pendingCandidates.get(odego) || [];
-            candidates.forEach(function(c) { pc.addIceCandidate(new RTCIceCandidate(c)).catch(function() {}); });
+            candidates.forEach(function(c) { 
+                pc.addIceCandidate(new RTCIceCandidate(c)).catch(function(e) {
+                    console.error('[VOICE] Add ICE candidate error:', e);
+                }); 
+            });
             pendingCandidates.set(odego, []);
+        }).catch(function(err) {
+            console.error('[VOICE] Handle answer error:', err);
         });
     }
 
     function handleIceCandidate(odego, candidate) {
         var pc = peerConnections.get(odego);
+        
         if (!pc || !pc.remoteDescription) {
+            console.log('[VOICE] Queuing ICE candidate for:', odego);
             if (!pendingCandidates.has(odego)) pendingCandidates.set(odego, []);
             pendingCandidates.get(odego).push(candidate);
             return;
         }
-        pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(function() {});
+        
+        console.log('[VOICE] Adding ICE candidate for:', odego);
+        pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(function(e) {
+            console.error('[VOICE] Add ICE candidate error:', e);
+        });
     }
 
     function handleVoiceMuteDeafen(data) {
@@ -2293,7 +2500,9 @@ function getClientHTML() {
         if (currentServer) {
             currentServer.channels.forEach(function(ch) {
                 if (ch.voiceParticipants) {
-                    var vp = ch.voiceParticipants.find(function(p) { return (p.visitorId || p.odego) === data.visitorId; });
+                    var vp = ch.voiceParticipants.find(function(p) { 
+                        return (p.visitorId || p.odego) === data.visitorId; 
+                    });
                     if (vp) {
                         if (data.muted !== undefined) vp.muted = data.muted;
                         if (data.deafened !== undefined) vp.deafened = data.deafened;
@@ -2311,24 +2520,43 @@ function getClientHTML() {
         if (!ch.voiceParticipants) ch.voiceParticipants = [];
         
         if (data.action === 'join') {
-            if (!ch.voiceParticipants.some(function(p) { return (p.visitorId || p.odego) === data.visitorId; })) {
-                ch.voiceParticipants.push({ visitorId: data.visitorId, username: data.username, muted: false, deafened: false });
+            var exists = ch.voiceParticipants.some(function(p) { 
+                return (p.visitorId || p.odego) === data.visitorId; 
+            });
+            if (!exists) {
+                ch.voiceParticipants.push({ 
+                    visitorId: data.visitorId, 
+                    username: data.username, 
+                    muted: false, 
+                    deafened: false 
+                });
             }
         } else if (data.action === 'leave') {
-            ch.voiceParticipants = ch.voiceParticipants.filter(function(p) { return (p.visitorId || p.odego) !== data.visitorId; });
+            ch.voiceParticipants = ch.voiceParticipants.filter(function(p) { 
+                return (p.visitorId || p.odego) !== data.visitorId; 
+            });
         }
         renderChannels();
     }
 
     function leaveVoiceChannel() {
-        if (!currentVoiceChannel) return;
-        var chId = currentVoiceChannel.id;
-        ws.send(JSON.stringify({ type: 'VOICE_LEAVE' }));
+        console.log('[VOICE] Leaving voice channel');
         
+        if (!currentVoiceChannel) return;
+        
+        var chId = currentVoiceChannel.id;
+        
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'VOICE_LEAVE' }));
+        }
+        
+        // Обновляем UI
         if (currentServer) {
             var ch = currentServer.channels.find(function(c) { return c.id === chId; });
             if (ch && ch.voiceParticipants) {
-                ch.voiceParticipants = ch.voiceParticipants.filter(function(p) { return (p.visitorId || p.odego) !== currentUser.id; });
+                ch.voiceParticipants = ch.voiceParticipants.filter(function(p) { 
+                    return (p.visitorId || p.odego) !== currentUser.id; 
+                });
             }
         }
         
@@ -2338,19 +2566,27 @@ function getClientHTML() {
     }
 
     function cleanupVoice() {
+        console.log('[VOICE] Cleaning up voice resources');
+        
         peerConnections.forEach(function(pc, odego) {
             pc.close();
             var audio = document.getElementById('audio-' + odego);
-            if (audio) { audio.srcObject = null; audio.remove(); }
+            if (audio) { 
+                audio.srcObject = null; 
+                audio.remove(); 
+            }
         });
         peerConnections.clear();
         pendingCandidates.clear();
         speakingUsers.clear();
         
         if (localStream) {
-            localStream.getTracks().forEach(function(t) { t.stop(); });
+            localStream.getTracks().forEach(function(t) { 
+                t.stop(); 
+            });
             localStream = null;
         }
+        
         if (audioContext) {
             audioContext.close().catch(function() {});
             audioContext = null;
@@ -2364,23 +2600,47 @@ function getClientHTML() {
 
     function toggleMute() {
         if (!localStream) return;
+        
         isMuted = !isMuted;
-        localStream.getAudioTracks().forEach(function(t) { t.enabled = !isMuted; });
-        ws.send(JSON.stringify({ type: 'VOICE_TOGGLE_MUTE', muted: isMuted }));
+        localStream.getAudioTracks().forEach(function(t) { 
+            t.enabled = !isMuted; 
+        });
+        
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'VOICE_TOGGLE_MUTE', muted: isMuted }));
+        }
+        
         if (isMuted) speakingUsers.delete(currentUser.id);
-        render();
+        
+        renderVoiceConnected();
+        renderUserPanel();
+        renderChannels();
     }
 
     function toggleDeafen() {
         isDeafened = !isDeafened;
-        document.querySelectorAll('audio[id^="audio-"]').forEach(function(a) { a.muted = isDeafened; });
+        
+        document.querySelectorAll('audio[id^="audio-"]').forEach(function(a) { 
+            a.muted = isDeafened; 
+        });
+        
         if (isDeafened && !isMuted) {
             isMuted = true;
-            if (localStream) localStream.getAudioTracks().forEach(function(t) { t.enabled = false; });
+            if (localStream) {
+                localStream.getAudioTracks().forEach(function(t) { 
+                    t.enabled = false; 
+                });
+            }
             speakingUsers.delete(currentUser.id);
         }
-        ws.send(JSON.stringify({ type: 'VOICE_TOGGLE_DEAFEN', deafened: isDeafened }));
-        render();
+        
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'VOICE_TOGGLE_DEAFEN', deafened: isDeafened }));
+        }
+        
+        renderVoiceConnected();
+        renderUserPanel();
+        renderChannels();
     }
 
     // ============================================
@@ -2389,18 +2649,30 @@ function getClientHTML() {
 
     function render() {
         var app = $('#app');
-        if (!token || !currentUser) { renderAuth(); return; }
-        
-        var html = '<div class="app-container"><div class="server-list" id="serverList"></div>';
-        if (currentServer) {
-            html += '<div class="channel-sidebar" id="channelSidebar"></div><div class="chat-area" id="chatArea"></div><div class="members-sidebar" id="membersSidebar"></div>';
-        } else {
-            html += '<div class="dm-sidebar" id="dmSidebar"></div><div class="chat-area" id="chatArea"></div>';
+        if (!token || !currentUser) { 
+            renderAuth(); 
+            return; 
         }
-        html += '</div><div id="modalContainer"></div>';
+        
+        var html = '<div class="app-container">';
+        html += '<div class="server-list" id="serverList"></div>';
+        
+        if (currentServer) {
+            html += '<div class="channel-sidebar" id="channelSidebar"></div>';
+            html += '<div class="chat-area" id="chatArea"></div>';
+            html += '<div class="members-sidebar" id="membersSidebar"></div>';
+        } else {
+            html += '<div class="dm-sidebar" id="dmSidebar"></div>';
+            html += '<div class="chat-area" id="chatArea"></div>';
+        }
+        
+        html += '</div>';
+        html += '<div id="modalContainer"></div>';
+        
         app.innerHTML = html;
         
         renderServerList();
+        
         if (currentServer) {
             renderChannelSidebar();
             renderChatArea();
@@ -2418,22 +2690,31 @@ function getClientHTML() {
         app.innerHTML = '<div class="auth-container"><div class="auth-box">' +
             '<h1>' + (isLogin ? 'С возвращением!' : 'Создать аккаунт') + '</h1>' +
             '<p>' + (isLogin ? 'Мы рады видеть вас снова!' : 'Присоединяйтесь!') + '</p>' +
-            '<div id="authError"></div><form id="authForm">' +
+            '<div id="authError"></div>' +
+            '<form id="authForm">' +
             (!isLogin ? '<div class="form-group"><label>Имя пользователя</label><input type="text" id="username" required minlength="3" maxlength="32"></div>' : '') +
             '<div class="form-group"><label>Email</label><input type="email" id="email" required></div>' +
             '<div class="form-group"><label>Пароль</label><input type="password" id="password" required minlength="6"></div>' +
-            '<button type="submit" class="btn">' + (isLogin ? 'Войти' : 'Зарегистрироваться') + '</button></form>' +
+            '<button type="submit" class="btn">' + (isLogin ? 'Войти' : 'Зарегистрироваться') + '</button>' +
+            '</form>' +
             '<div class="auth-switch">' + (isLogin ? 'Нет аккаунта?' : 'Уже есть аккаунт?') +
-            ' <a id="authSwitch">' + (isLogin ? 'Зарегистрироваться' : 'Войти') + '</a></div></div></div>';
+            ' <a id="authSwitch">' + (isLogin ? 'Зарегистрироваться' : 'Войти') + '</a></div>' +
+            '</div></div>';
         
-        $('#authSwitch').onclick = function() { window.showRegister = isLogin; renderAuth(); };
+        $('#authSwitch').onclick = function() { 
+            window.showRegister = isLogin; 
+            renderAuth(); 
+        };
+        
         $('#authForm').onsubmit = function(e) {
             e.preventDefault();
             var email = $('#email').value;
             var password = $('#password').value;
             var usernameEl = $('#username');
             var endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-            var body = isLogin ? { email: email, password: password } : { email: email, password: password, username: usernameEl.value };
+            var body = isLogin 
+                ? { email: email, password: password } 
+                : { email: email, password: password, username: usernameEl.value };
             
             api(endpoint, { method: 'POST', body: JSON.stringify(body) })
                 .then(function(data) {
@@ -2444,7 +2725,9 @@ function getClientHTML() {
                     return loadServers();
                 })
                 .then(function() { render(); })
-                .catch(function(e) { $('#authError').innerHTML = '<div class="error-msg">' + e.message + '</div>'; });
+                .catch(function(e) { 
+                    $('#authError').innerHTML = '<div class="error-msg">' + e.message + '</div>'; 
+                });
         };
     }
 
@@ -2452,17 +2735,23 @@ function getClientHTML() {
         var c = $('#serverList');
         if (!c) return;
         
-        var html = '<div class="server-icon home ' + (!currentServer ? 'active' : '') + '" id="homeBtn" title="Личные сообщения">🏠</div><div class="separator"></div>';
+        var html = '<div class="server-icon home ' + (!currentServer ? 'active' : '') + '" id="homeBtn" title="Личные сообщения">🏠</div>';
+        html += '<div class="separator"></div>';
+        
         servers.forEach(function(s) {
             html += '<div class="server-icon ' + (currentServer && currentServer.id === s.id ? 'active' : '') + '" data-server-id="' + s.id + '" title="' + escapeHtml(s.name) + '">' + getInitials(s.name) + '</div>';
         });
+        
         html += '<div class="server-icon add" id="addServerBtn" title="Добавить сервер">+</div>';
         c.innerHTML = html;
         
         $('#homeBtn').onclick = selectHome;
         $('#addServerBtn').onclick = showCreateServerModal;
+        
         $$('.server-icon[data-server-id]').forEach(function(el) {
-            el.onclick = function() { selectServer(el.getAttribute('data-server-id')); };
+            el.onclick = function() { 
+                selectServer(el.getAttribute('data-server-id')); 
+            };
         });
     }
 
@@ -2471,9 +2760,12 @@ function getClientHTML() {
         if (!c || !currentServer) return;
         
         c.innerHTML = '<div class="server-header" id="serverHeader">' + escapeHtml(currentServer.name) + '<span>⌄</span></div>' +
-            '<div class="channel-list" id="channelList"></div><div id="voiceConnectedPanel"></div><div class="user-panel" id="userPanel"></div>';
+            '<div class="channel-list" id="channelList"></div>' +
+            '<div id="voiceConnectedPanel"></div>' +
+            '<div class="user-panel" id="userPanel"></div>';
         
         $('#serverHeader').onclick = showServerSettings;
+        
         renderChannels();
         renderVoiceConnected();
         renderUserPanel();
@@ -2487,29 +2779,35 @@ function getClientHTML() {
         var textCh = channels.filter(function(ch) { return ch.type === 'text'; });
         var voiceCh = channels.filter(function(ch) { return ch.type === 'voice'; });
         
-        var html = '<div class="channel-category"><span>Текстовые каналы</span>' +
-            (currentServer.owner_id === currentUser.id ? '<button id="addTextChannel">+</button>' : '') + '</div>';
+        var html = '<div class="channel-category"><span>Текстовые каналы</span>';
+        if (currentServer.owner_id === currentUser.id) {
+            html += '<button id="addTextChannel">+</button>';
+        }
+        html += '</div>';
         
         textCh.forEach(function(ch) {
-            html += '<div class="channel-item ' + (currentChannel && currentChannel.id === ch.id ? 'active' : '') + '" data-channel-id="' + ch.id + '">' +
-                '<span class="icon">#</span><span class="name">' + escapeHtml(ch.name) + '</span>';
+            html += '<div class="channel-item ' + (currentChannel && currentChannel.id === ch.id ? 'active' : '') + '" data-channel-id="' + ch.id + '">';
+            html += '<span class="icon">#</span><span class="name">' + escapeHtml(ch.name) + '</span>';
             if (currentServer.owner_id === currentUser.id && textCh.length > 1) {
                 html += '<button class="delete-btn" data-delete-channel="' + ch.id + '">×</button>';
             }
             html += '</div>';
         });
         
-        html += '<div class="channel-category"><span>Голосовые каналы</span>' +
-            (currentServer.owner_id === currentUser.id ? '<button id="addVoiceChannel">+</button>' : '') + '</div>';
+        html += '<div class="channel-category"><span>Голосовые каналы</span>';
+        if (currentServer.owner_id === currentUser.id) {
+            html += '<button id="addVoiceChannel">+</button>';
+        }
+        html += '</div>';
         
         voiceCh.forEach(function(ch) {
             var participants = ch.voiceParticipants || [];
             var hasUsers = participants.length > 0;
             var isConnected = currentVoiceChannel && currentVoiceChannel.id === ch.id;
             
-            html += '<div class="voice-channel ' + (hasUsers ? 'has-users' : '') + '">' +
-                '<div class="channel-item ' + (isConnected ? 'active' : '') + '" data-voice-channel-id="' + ch.id + '">' +
-                '<span class="icon">🔊</span><span class="name">' + escapeHtml(ch.name) + '</span>';
+            html += '<div class="voice-channel ' + (hasUsers ? 'has-users' : '') + '">';
+            html += '<div class="channel-item ' + (isConnected ? 'active' : '') + '" data-voice-channel-id="' + ch.id + '">';
+            html += '<span class="icon">🔊</span><span class="name">' + escapeHtml(ch.name) + '</span>';
             if (currentServer.owner_id === currentUser.id && voiceCh.length > 1) {
                 html += '<button class="delete-btn" data-delete-channel="' + ch.id + '">×</button>';
             }
@@ -2520,13 +2818,13 @@ function getClientHTML() {
                 participants.forEach(function(p) {
                     var odego = p.visitorId || p.odego;
                     var isSpeaking = speakingUsers.has(odego);
-                    html += '<div class="voice-participant ' + (isSpeaking ? 'speaking' : '') + '" data-user-id="' + odego + '">' +
-                        '<div class="avatar">' + getInitials(p.username) + '</div>' +
-                        '<span class="name">' + escapeHtml(p.username) + '</span>' +
-                        '<span class="status-icons">' +
-                        (p.muted ? '<span class="mute-icon">🔇</span>' : '') +
-                        (p.deafened ? '<span class="deafen-icon">🔕</span>' : '') +
-                        '</span></div>';
+                    html += '<div class="voice-participant ' + (isSpeaking ? 'speaking' : '') + '" data-user-id="' + odego + '">';
+                    html += '<div class="avatar">' + getInitials(p.username) + '</div>';
+                    html += '<span class="name">' + escapeHtml(p.username) + '</span>';
+                    html += '<span class="status-icons">';
+                    if (p.muted) html += '<span class="mute-icon">🔇</span>';
+                    if (p.deafened) html += '<span class="deafen-icon">🔕</span>';
+                    html += '</span></div>';
                 });
                 html += '</div>';
             }
@@ -2535,38 +2833,61 @@ function getClientHTML() {
         
         c.innerHTML = html;
         
-        if ($('#addTextChannel')) $('#addTextChannel').onclick = function() { showCreateChannelModal('text'); };
-        if ($('#addVoiceChannel')) $('#addVoiceChannel').onclick = function() { showCreateChannelModal('voice'); };
+        var addTextBtn = $('#addTextChannel');
+        if (addTextBtn) addTextBtn.onclick = function() { showCreateChannelModal('text'); };
+        
+        var addVoiceBtn = $('#addVoiceChannel');
+        if (addVoiceBtn) addVoiceBtn.onclick = function() { showCreateChannelModal('voice'); };
         
         $$('.channel-item[data-channel-id]').forEach(function(el) {
             el.onclick = function(e) {
-                if (!e.target.classList.contains('delete-btn')) selectChannel(el.getAttribute('data-channel-id'));
+                if (!e.target.classList.contains('delete-btn')) {
+                    selectChannel(el.getAttribute('data-channel-id'));
+                }
             };
         });
+        
         $$('.channel-item[data-voice-channel-id]').forEach(function(el) {
             el.onclick = function(e) {
                 if (!e.target.classList.contains('delete-btn')) {
-                    var ch = currentServer.channels.find(function(c) { return c.id === el.getAttribute('data-voice-channel-id'); });
+                    var chId = el.getAttribute('data-voice-channel-id');
+                    var ch = currentServer.channels.find(function(c) { return c.id === chId; });
                     if (ch) joinVoiceChannel(ch);
                 }
             };
         });
+        
         $$('[data-delete-channel]').forEach(function(el) {
-            el.onclick = function(e) { e.stopPropagation(); deleteChannel(el.getAttribute('data-delete-channel')); };
+            el.onclick = function(e) { 
+                e.stopPropagation(); 
+                deleteChannel(el.getAttribute('data-delete-channel')); 
+            };
         });
     }
 
     function renderVoiceConnected() {
         var c = $('#voiceConnectedPanel');
         if (!c) return;
-        if (!currentVoiceChannel) { c.innerHTML = ''; return; }
         
-        c.innerHTML = '<div class="voice-connected"><div class="voice-status"><div class="indicator"></div>' +
-            '<div class="text"><div class="title">Голосовой канал</div><div class="channel">' + escapeHtml(currentVoiceChannel.name) + '</div></div></div>' +
+        if (!currentVoiceChannel) { 
+            c.innerHTML = ''; 
+            return; 
+        }
+        
+        c.innerHTML = '<div class="voice-connected">' +
+            '<div class="voice-status">' +
+            '<div class="indicator"></div>' +
+            '<div class="text">' +
+            '<div class="title">Голосовой канал</div>' +
+            '<div class="channel">' + escapeHtml(currentVoiceChannel.name) + '</div>' +
+            '</div>' +
+            '</div>' +
             '<div class="voice-controls">' +
             '<button id="vcMute" class="' + (isMuted ? 'active' : '') + '">' + (isMuted ? '🔇' : '🎤') + '</button>' +
             '<button id="vcDeafen" class="' + (isDeafened ? 'active' : '') + '">' + (isDeafened ? '🔕' : '🔔') + '</button>' +
-            '<button id="vcDisconnect" class="disconnect">📞</button></div></div>';
+            '<button id="vcDisconnect" class="disconnect">📞</button>' +
+            '</div>' +
+            '</div>';
         
         $('#vcMute').onclick = toggleMute;
         $('#vcDeafen').onclick = toggleDeafen;
@@ -2579,20 +2900,29 @@ function getClientHTML() {
         
         var isSpeaking = speakingUsers.has(currentUser.id) && currentVoiceChannel;
         
-        var html = '<div class="avatar ' + (isSpeaking ? 'speaking' : '') + '">' + getInitials(currentUser.username) + '</div>' +
-            '<div class="info"><div class="username">' + escapeHtml(currentUser.username) + '</div><div class="status">В сети</div></div>' +
-            '<div class="actions">';
+        var html = '<div class="avatar ' + (isSpeaking ? 'speaking' : '') + '">' + getInitials(currentUser.username) + '</div>';
+        html += '<div class="info">';
+        html += '<div class="username">' + escapeHtml(currentUser.username) + '</div>';
+        html += '<div class="status">В сети</div>';
+        html += '</div>';
+        html += '<div class="actions">';
         
         if (currentVoiceChannel) {
-            html += '<button id="upMute" class="' + (isMuted ? 'muted' : '') + '">' + (isMuted ? '🔇' : '🎤') + '</button>' +
-                '<button id="upDeafen" class="' + (isDeafened ? 'muted' : '') + '">' + (isDeafened ? '🔕' : '🎧') + '</button>';
+            html += '<button id="upMute" class="' + (isMuted ? 'muted' : '') + '">' + (isMuted ? '🔇' : '🎤') + '</button>';
+            html += '<button id="upDeafen" class="' + (isDeafened ? 'muted' : '') + '">' + (isDeafened ? '🔕' : '🎧') + '</button>';
         }
-        html += '<button id="logoutBtn">🚪</button></div>';
+        
+        html += '<button id="logoutBtn">🚪</button>';
+        html += '</div>';
         
         c.innerHTML = html;
         
-        if ($('#upMute')) $('#upMute').onclick = toggleMute;
-        if ($('#upDeafen')) $('#upDeafen').onclick = toggleDeafen;
+        var muteBtn = $('#upMute');
+        if (muteBtn) muteBtn.onclick = toggleMute;
+        
+        var deafenBtn = $('#upDeafen');
+        if (deafenBtn) deafenBtn.onclick = toggleDeafen;
+        
         $('#logoutBtn').onclick = logout;
     }
 
@@ -2628,9 +2958,15 @@ function getClientHTML() {
         var html = '';
         messages.forEach(function(m) {
             var username = m.username || m.sender_username;
-            html += '<div class="message"><div class="avatar">' + getInitials(username) + '</div><div class="content">' +
-                '<div class="header"><span class="author">' + escapeHtml(username) + '</span><span class="timestamp">' + formatTime(m.created_at) + '</span></div>' +
-                '<div class="text">' + escapeHtml(m.content) + '</div></div></div>';
+            html += '<div class="message">';
+            html += '<div class="avatar">' + getInitials(username) + '</div>';
+            html += '<div class="content">';
+            html += '<div class="header">';
+            html += '<span class="author">' + escapeHtml(username) + '</span>';
+            html += '<span class="timestamp">' + formatTime(m.created_at) + '</span>';
+            html += '</div>';
+            html += '<div class="text">' + escapeHtml(m.content) + '</div>';
+            html += '</div></div>';
         });
         c.innerHTML = html;
         scrollToBottom();
@@ -2644,27 +2980,39 @@ function getClientHTML() {
         var offline = currentServer.members.filter(function(m) { return m.status !== 'online'; });
         
         var html = '<div class="members-category">В сети — ' + online.length + '</div>';
+        
         online.forEach(function(m) {
-            var inVoice = getUserVoiceChannel(m.id);
-            html += '<div class="member-item" data-member-id="' + m.id + '"><div class="avatar">' + getInitials(m.username) +
-                '<div class="status-dot online"></div></div><span class="name">' + escapeHtml(m.username) + '</span>' +
-                (inVoice ? '<span class="voice-icon">🔊</span>' : '') + '</div>';
+            var inVoice = getMemberVoiceChannel(m.id);
+            html += '<div class="member-item" data-member-id="' + m.id + '">';
+            html += '<div class="avatar">' + getInitials(m.username);
+            html += '<div class="status-dot online"></div></div>';
+            html += '<span class="name">' + escapeHtml(m.username) + '</span>';
+            if (inVoice) html += '<span class="voice-icon">🔊</span>';
+            html += '</div>';
         });
         
         html += '<div class="members-category">Не в сети — ' + offline.length + '</div>';
+        
         offline.forEach(function(m) {
-            html += '<div class="member-item" data-member-id="' + m.id + '"><div class="avatar">' + getInitials(m.username) +
-                '<div class="status-dot offline"></div></div><span class="name">' + escapeHtml(m.username) + '</span></div>';
+            html += '<div class="member-item" data-member-id="' + m.id + '">';
+            html += '<div class="avatar">' + getInitials(m.username);
+            html += '<div class="status-dot offline"></div></div>';
+            html += '<span class="name">' + escapeHtml(m.username) + '</span>';
+            html += '</div>';
         });
         
         c.innerHTML = html;
+        
         $$('.member-item[data-member-id]').forEach(function(el) {
-            el.onclick = function() { startDM(el.getAttribute('data-member-id')); };
+            el.onclick = function() { 
+                startDM(el.getAttribute('data-member-id')); 
+            };
         });
     }
 
-    function getUserVoiceChannel(visitorId) {
+    function getMemberVoiceChannel(visitorId) {
         if (!currentServer || !currentServer.channels) return null;
+        
         for (var i = 0; i < currentServer.channels.length; i++) {
             var ch = currentServer.channels[i];
             if (ch.type === 'voice' && ch.voiceParticipants) {
@@ -2682,24 +3030,38 @@ function getClientHTML() {
         if (!c) return;
         
         c.innerHTML = '<div class="dm-header"><input type="text" class="dm-search" placeholder="Найти пользователя" id="dmSearch"></div>' +
-            '<div class="dm-list" id="dmList"></div><div class="user-panel" id="userPanel"></div>';
+            '<div class="dm-list" id="dmList"></div>' +
+            '<div class="user-panel" id="userPanel"></div>';
         
         renderDMList();
         renderUserPanel();
         
         $('#dmSearch').oninput = function(e) {
             var q = e.target.value;
-            if (q.length < 2) { renderDMList(); return; }
+            if (q.length < 2) { 
+                renderDMList(); 
+                return; 
+            }
+            
             api('/api/users/search?q=' + encodeURIComponent(q)).then(function(users) {
                 var list = $('#dmList');
-                if (!users.length) { list.innerHTML = '<div class="empty-state"><p>Никого не найдено</p></div>'; return; }
+                if (!users.length) { 
+                    list.innerHTML = '<div class="empty-state"><p>Никого не найдено</p></div>'; 
+                    return; 
+                }
+                
                 var html = '';
                 users.forEach(function(u) {
-                    html += '<div class="dm-item" data-user-id="' + u.id + '"><div class="avatar">' + getInitials(u.username) + '</div><span class="name">' + escapeHtml(u.username) + '</span></div>';
+                    html += '<div class="dm-item" data-user-id="' + u.id + '">';
+                    html += '<div class="avatar">' + getInitials(u.username) + '</div>';
+                    html += '<span class="name">' + escapeHtml(u.username) + '</span></div>';
                 });
                 list.innerHTML = html;
+                
                 $$('.dm-item[data-user-id]').forEach(function(el) {
-                    el.onclick = function() { startDM(el.getAttribute('data-user-id')); };
+                    el.onclick = function() { 
+                        startDM(el.getAttribute('data-user-id')); 
+                    };
                 });
             });
         };
@@ -2709,15 +3071,24 @@ function getClientHTML() {
         api('/api/dm').then(function(convs) {
             var list = $('#dmList');
             if (!list) return;
-            if (!convs.length) { list.innerHTML = '<div class="empty-state"><p>Нет бесед</p></div>'; return; }
+            
+            if (!convs.length) { 
+                list.innerHTML = '<div class="empty-state"><p>Нет бесед</p></div>'; 
+                return; 
+            }
+            
             var html = '';
             convs.forEach(function(c) {
-                html += '<div class="dm-item ' + (currentDM && currentDM.id === c.id ? 'active' : '') + '" data-dm-id="' + c.id + '" data-dm-name="' + escapeHtml(c.username) + '">' +
-                    '<div class="avatar">' + getInitials(c.username) + '</div><span class="name">' + escapeHtml(c.username) + '</span></div>';
+                html += '<div class="dm-item ' + (currentDM && currentDM.id === c.id ? 'active' : '') + '" data-dm-id="' + c.id + '" data-dm-name="' + escapeHtml(c.username) + '">';
+                html += '<div class="avatar">' + getInitials(c.username) + '</div>';
+                html += '<span class="name">' + escapeHtml(c.username) + '</span></div>';
             });
             list.innerHTML = html;
+            
             $$('.dm-item[data-dm-id]').forEach(function(el) {
-                el.onclick = function() { selectDM(el.getAttribute('data-dm-id'), el.getAttribute('data-dm-name')); };
+                el.onclick = function() { 
+                    selectDM(el.getAttribute('data-dm-id'), el.getAttribute('data-dm-name')); 
+                };
             });
         });
     }
@@ -2754,8 +3125,11 @@ function getClientHTML() {
             '<div class="modal-body" id="modalBody"><div class="form-group"><label>Название</label><input type="text" id="serverName" maxlength="100"></div></div>' +
             '<div class="modal-footer"><button class="btn secondary" id="cancelBtn">Отмена</button><button class="btn" id="modalAction">Создать</button></div></div></div>';
         
-        $('#modalOverlay').onclick = function(e) { if (e.target.id === 'modalOverlay') closeModal(); };
+        $('#modalOverlay').onclick = function(e) { 
+            if (e.target.id === 'modalOverlay') closeModal(); 
+        };
         $('#cancelBtn').onclick = closeModal;
+        
         $('#createTab').onclick = function() {
             $$('.modal-tabs button').forEach(function(b) { b.classList.remove('active'); });
             $('#createTab').classList.add('active');
@@ -2763,6 +3137,7 @@ function getClientHTML() {
             $('#modalAction').textContent = 'Создать';
             $('#modalAction').onclick = createServer;
         };
+        
         $('#joinTab').onclick = function() {
             $$('.modal-tabs button').forEach(function(b) { b.classList.remove('active'); });
             $('#joinTab').classList.add('active');
@@ -2770,6 +3145,7 @@ function getClientHTML() {
             $('#modalAction').textContent = 'Присоединиться';
             $('#modalAction').onclick = joinServer;
         };
+        
         $('#modalAction').onclick = createServer;
     }
 
@@ -2780,13 +3156,16 @@ function getClientHTML() {
             '<div class="modal-body"><div class="form-group"><label>Название</label><input type="text" id="channelName" maxlength="100"></div></div>' +
             '<div class="modal-footer"><button class="btn secondary" id="cancelBtn">Отмена</button><button class="btn" id="createChannelBtn">Создать</button></div></div></div>';
         
-        $('#modalOverlay').onclick = function(e) { if (e.target.id === 'modalOverlay') closeModal(); };
+        $('#modalOverlay').onclick = function(e) { 
+            if (e.target.id === 'modalOverlay') closeModal(); 
+        };
         $('#cancelBtn').onclick = closeModal;
         $('#createChannelBtn').onclick = function() { createChannel(type); };
     }
 
     function showServerSettings() {
         if (!currentServer) return;
+        
         var c = $('#modalContainer');
         var footer = currentServer.owner_id === currentUser.id
             ? '<button class="btn" style="background:var(--red)" id="deleteServerBtn">Удалить</button>'
@@ -2797,24 +3176,34 @@ function getClientHTML() {
             '<div class="modal-body"><div class="form-group"><label>Код приглашения</label><div class="invite-code" id="inviteCodeDisplay">Загрузка...</div></div></div>' +
             '<div class="modal-footer">' + footer + '<button class="btn secondary" id="closeBtn">Закрыть</button></div></div></div>';
         
-        $('#modalOverlay').onclick = function(e) { if (e.target.id === 'modalOverlay') closeModal(); };
+        $('#modalOverlay').onclick = function(e) { 
+            if (e.target.id === 'modalOverlay') closeModal(); 
+        };
         $('#closeBtn').onclick = closeModal;
-        if ($('#deleteServerBtn')) $('#deleteServerBtn').onclick = deleteServer;
-        if ($('#leaveServerBtn')) $('#leaveServerBtn').onclick = leaveServer;
+        
+        var deleteBtn = $('#deleteServerBtn');
+        if (deleteBtn) deleteBtn.onclick = deleteServer;
+        
+        var leaveBtn = $('#leaveServerBtn');
+        if (leaveBtn) leaveBtn.onclick = leaveServer;
         
         api('/api/servers/' + currentServer.id + '/invite').then(function(d) {
             $('#inviteCodeDisplay').textContent = d.invite_code;
         });
     }
 
-    function closeModal() { $('#modalContainer').innerHTML = ''; }
+    function closeModal() { 
+        $('#modalContainer').innerHTML = ''; 
+    }
 
     // ============================================
     // ACTIONS
     // ============================================
 
     function loadServers() {
-        return api('/api/servers').then(function(d) { servers = d; });
+        return api('/api/servers').then(function(d) { 
+            servers = d; 
+        });
     }
 
     function selectServer(id) {
@@ -2827,7 +3216,11 @@ function getClientHTML() {
         });
     }
 
-    function selectHome() { currentServer = null; currentChannel = null; render(); }
+    function selectHome() { 
+        currentServer = null; 
+        currentChannel = null; 
+        render(); 
+    }
 
     function selectChannel(id) {
         if (!currentServer) return;
@@ -2849,14 +3242,20 @@ function getClientHTML() {
     function setupMessageInput() {
         var input = $('#messageInput');
         if (!input) return;
-        input.onkeydown = function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
-        var timeout;
+        
+        input.onkeydown = function(e) { 
+            if (e.key === 'Enter' && !e.shiftKey) { 
+                e.preventDefault(); 
+                sendMessage(); 
+            } 
+        };
+        
         input.oninput = function() {
-            clearTimeout(timeout);
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'TYPING_START', channelId: currentChannel.id }));
             }
         };
+        
         input.focus();
         $('#sendBtn').onclick = sendMessage;
     }
@@ -2865,35 +3264,55 @@ function getClientHTML() {
         var input = $('#messageInput');
         var content = input && input.value ? input.value.trim() : '';
         if (!content || !currentChannel) return;
+        
         if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'CHANNEL_MESSAGE', channelId: currentChannel.id, content: content }));
+            ws.send(JSON.stringify({ 
+                type: 'CHANNEL_MESSAGE', 
+                channelId: currentChannel.id, 
+                content: content 
+            }));
         }
         input.value = '';
     }
 
     function selectDM(id, name) {
         currentDM = { id: id, username: name };
-        api('/api/dm/' + id + '?limit=50').then(function(d) { messages = d; renderDMChatArea(); });
+        api('/api/dm/' + id + '?limit=50').then(function(d) { 
+            messages = d; 
+            renderDMChatArea(); 
+        });
     }
 
     function startDM(id) {
         currentServer = null;
         currentChannel = null;
+        
         api('/api/users/' + id).then(function(u) {
             currentDM = { id: id, username: u.username };
             return api('/api/dm/' + id + '?limit=50');
-        }).then(function(d) { messages = d; render(); });
+        }).then(function(d) { 
+            messages = d; 
+            render(); 
+        });
     }
 
     function setupDMInput() {
         var input = $('#messageInput');
         if (!input) return;
-        input.onkeydown = function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendDM(); } };
+        
+        input.onkeydown = function(e) { 
+            if (e.key === 'Enter' && !e.shiftKey) { 
+                e.preventDefault(); 
+                sendDM(); 
+            } 
+        };
+        
         input.oninput = function() {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'TYPING_START', recipientId: currentDM.id }));
             }
         };
+        
         input.focus();
         $('#sendDMBtn').onclick = sendDM;
     }
@@ -2902,38 +3321,65 @@ function getClientHTML() {
         var input = $('#messageInput');
         var content = input && input.value ? input.value.trim() : '';
         if (!content || !currentDM) return;
+        
         if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'DIRECT_MESSAGE', recipientId: currentDM.id, content: content }));
+            ws.send(JSON.stringify({ 
+                type: 'DIRECT_MESSAGE', 
+                recipientId: currentDM.id, 
+                content: content 
+            }));
         }
         input.value = '';
     }
 
     function createServer() {
-        var name = ($('#serverName') || {}).value;
-        if (!name || !name.trim()) { alert('Введите название'); return; }
-        api('/api/servers', { method: 'POST', body: JSON.stringify({ name: name.trim() }) }).then(function(s) {
-            servers.push(s);
-            closeModal();
-            selectServer(s.id);
-        }).catch(function(e) { alert(e.message); });
+        var nameEl = $('#serverName');
+        var name = nameEl ? nameEl.value : '';
+        if (!name || !name.trim()) { 
+            alert('Введите название'); 
+            return; 
+        }
+        
+        api('/api/servers', { method: 'POST', body: JSON.stringify({ name: name.trim() }) })
+            .then(function(s) {
+                servers.push(s);
+                closeModal();
+                selectServer(s.id);
+            })
+            .catch(function(e) { alert(e.message); });
     }
 
     function joinServer() {
-        var code = ($('#inviteCode') || {}).value;
-        if (!code || !code.trim()) { alert('Введите код'); return; }
-        api('/api/servers/join/' + code.trim(), { method: 'POST' }).then(function(s) {
-            servers.push(s);
-            closeModal();
-            selectServer(s.id);
-        }).catch(function(e) { alert(e.message); });
+        var codeEl = $('#inviteCode');
+        var code = codeEl ? codeEl.value : '';
+        if (!code || !code.trim()) { 
+            alert('Введите код'); 
+            return; 
+        }
+        
+        api('/api/servers/join/' + code.trim(), { method: 'POST' })
+            .then(function(s) {
+                servers.push(s);
+                closeModal();
+                selectServer(s.id);
+            })
+            .catch(function(e) { alert(e.message); });
     }
 
     function createChannel(type) {
-        var name = ($('#channelName') || {}).value;
-        if (!name || !name.trim()) { alert('Введите название'); return; }
-        api('/api/servers/' + currentServer.id + '/channels', { method: 'POST', body: JSON.stringify({ name: name.trim(), type: type }) })
-            .then(function() { closeModal(); })
-            .catch(function(e) { alert(e.message); });
+        var nameEl = $('#channelName');
+        var name = nameEl ? nameEl.value : '';
+        if (!name || !name.trim()) { 
+            alert('Введите название'); 
+            return; 
+        }
+        
+        api('/api/servers/' + currentServer.id + '/channels', { 
+            method: 'POST', 
+            body: JSON.stringify({ name: name.trim(), type: type }) 
+        })
+        .then(function() { closeModal(); })
+        .catch(function(e) { alert(e.message); });
     }
 
     function deleteChannel(id) {
@@ -2943,24 +3389,30 @@ function getClientHTML() {
 
     function deleteServer() {
         if (!confirm('Удалить сервер? Это нельзя отменить!')) return;
-        api('/api/servers/' + currentServer.id, { method: 'DELETE' }).then(function() {
-            servers = servers.filter(function(s) { return s.id !== currentServer.id; });
-            currentServer = null;
-            currentChannel = null;
-            closeModal();
-            render();
-        }).catch(function(e) { alert(e.message); });
+        
+        api('/api/servers/' + currentServer.id, { method: 'DELETE' })
+            .then(function() {
+                servers = servers.filter(function(s) { return s.id !== currentServer.id; });
+                currentServer = null;
+                currentChannel = null;
+                closeModal();
+                render();
+            })
+            .catch(function(e) { alert(e.message); });
     }
 
     function leaveServer() {
         if (!confirm('Покинуть сервер?')) return;
-        api('/api/servers/' + currentServer.id + '/leave', { method: 'POST' }).then(function() {
-            servers = servers.filter(function(s) { return s.id !== currentServer.id; });
-            currentServer = null;
-            currentChannel = null;
-            closeModal();
-            render();
-        }).catch(function(e) { alert(e.message); });
+        
+        api('/api/servers/' + currentServer.id + '/leave', { method: 'POST' })
+            .then(function() {
+                servers = servers.filter(function(s) { return s.id !== currentServer.id; });
+                currentServer = null;
+                currentChannel = null;
+                closeModal();
+                render();
+            })
+            .catch(function(e) { alert(e.message); });
     }
 
     function scrollToBottom() {
@@ -2970,15 +3422,19 @@ function getClientHTML() {
 
     function logout() {
         if (currentVoiceChannel) leaveVoiceChannel();
+        
         token = null;
         currentUser = null;
         localStorage.removeItem('token');
+        
         if (ws) ws.close();
+        
         servers = [];
         currentServer = null;
         currentChannel = null;
         currentDM = null;
         messages = [];
+        
         render();
     }
 
@@ -2988,16 +3444,20 @@ function getClientHTML() {
 
     function init() {
         token = localStorage.getItem('token');
+        
         if (token) {
-            api('/api/auth/me').then(function(u) {
-                currentUser = u;
-                connectWebSocket();
-                return loadServers();
-            }).then(function() { render(); }).catch(function() {
-                token = null;
-                localStorage.removeItem('token');
-                render();
-            });
+            api('/api/auth/me')
+                .then(function(u) {
+                    currentUser = u;
+                    connectWebSocket();
+                    return loadServers();
+                })
+                .then(function() { render(); })
+                .catch(function() {
+                    token = null;
+                    localStorage.removeItem('token');
+                    render();
+                });
         } else {
             render();
         }
