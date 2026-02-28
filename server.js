@@ -17,7 +17,7 @@ const http = require('http');
 // ============================================
 
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
 const BCRYPT_ROUNDS = 10;
 const DATABASE_URL = process.env.DATABASE_URL;
 
