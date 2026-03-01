@@ -163,8 +163,18 @@ async function initializeDatabase() {
                 read_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS message_reactions (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                message_type VARCHAR(20) NOT NULL CHECK (message_type IN ('channel', 'direct')),
+                message_id UUID NOT NULL,
+                user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                emoji VARCHAR(32) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(message_type, message_id, user_id, emoji)
+            );
             CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id);
             CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_reactions_message ON message_reactions(message_type, message_id);
         `);
         console.log('✅ База данных инициализирована');
     } finally {
@@ -179,6 +189,58 @@ async function initializeDatabase() {
 function generateInviteCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
     return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+const EMOJI_CATALOG = [
+    { emoji: '😀', name: 'grinning', nitro: false },
+    { emoji: '😂', name: 'joy', nitro: false },
+    { emoji: '😍', name: 'heart_eyes', nitro: false },
+    { emoji: '🤔', name: 'thinking', nitro: false },
+    { emoji: '😎', name: 'sunglasses', nitro: false },
+    { emoji: '😭', name: 'sob', nitro: false },
+    { emoji: '🔥', name: 'fire', nitro: false },
+    { emoji: '🎉', name: 'tada', nitro: false },
+    { emoji: '🙏', name: 'pray', nitro: false },
+    { emoji: '💯', name: 'hundred', nitro: false },
+    { emoji: '🦄', name: 'nitro_unicorn', nitro: true },
+    { emoji: '💎', name: 'nitro_diamond', nitro: true },
+    { emoji: '⚡', name: 'nitro_boost', nitro: true },
+    { emoji: '🌈', name: 'nitro_rainbow', nitro: true },
+    { emoji: '🪩', name: 'nitro_party', nitro: true },
+    { emoji: '✨', name: 'nitro_sparkle', nitro: true }
+];
+
+function isSupportedEmoji(emoji) {
+    return EMOJI_CATALOG.some(e => e.emoji === emoji);
+}
+
+async function getReactionsForMessages(messageType, messageIds, userId) {
+    if (!messageIds || !messageIds.length) return new Map();
+    const result = await pool.query(
+        `SELECT message_id, emoji, COUNT(*)::int as count, BOOL_OR(user_id = $2) as reacted_by_me
+         FROM message_reactions
+         WHERE message_type = $1 AND message_id = ANY($3::uuid[])
+         GROUP BY message_id, emoji
+         ORDER BY message_id, count DESC, emoji ASC`,
+        [messageType, userId, messageIds]
+    );
+    const map = new Map();
+    result.rows.forEach(r => {
+        if (!map.has(r.message_id)) map.set(r.message_id, []);
+        const meta = EMOJI_CATALOG.find(e => e.emoji === r.emoji);
+        map.get(r.message_id).push({
+            emoji: r.emoji,
+            count: r.count,
+            reacted_by_me: r.reacted_by_me,
+            nitro: !!(meta && meta.nitro)
+        });
+    });
+    return map;
+}
+
+async function buildReactionPayload(messageType, messageId, userId) {
+    const reactionMap = await getReactionsForMessages(messageType, [messageId], userId);
+    return reactionMap.get(messageId) || [];
 }
 
 // ============================================
@@ -578,7 +640,8 @@ wss.on('connection', (ws) => {
                     await pool.query('INSERT INTO messages (id, channel_id, author_id, content) VALUES ($1, $2, $3, $4)', [msgId, channelId, odego, content.trim()]);
                     
                     const newMsg = await pool.query('SELECT m.*, u.username, u.avatar_url FROM messages m JOIN users u ON m.author_id = u.id WHERE m.id = $1', [msgId]);
-                    broadcastToServer(ch.rows[0].server_id, { type: 'NEW_CHANNEL_MESSAGE', message: newMsg.rows[0] });
+                    const payload = { ...newMsg.rows[0], reactions: [] };
+                    broadcastToServer(ch.rows[0].server_id, { type: 'NEW_CHANNEL_MESSAGE', message: payload });
                     break;
                 }
 
@@ -599,6 +662,7 @@ wss.on('connection', (ws) => {
                         sender_username: sender.rows[0].username, sender_avatar: sender.rows[0].avatar_url,
                         recipient_username: recipient.rows[0].username, recipient_avatar: recipient.rows[0].avatar_url
                     };
+                    newMsg.reactions = [];
                     sendToUser(odego, { type: 'NEW_DIRECT_MESSAGE', message: newMsg });
                     sendToUser(recipientId, { type: 'NEW_DIRECT_MESSAGE', message: newMsg });
                     break;
@@ -623,6 +687,54 @@ wss.on('connection', (ws) => {
                             visitorId: odego, 
                             username: user.rows[0]?.username 
                         });
+                    }
+                    break;
+                }
+
+                case 'TOGGLE_REACTION': {
+                    const { messageId, messageType, emoji } = msg;
+                    if (!messageId || !messageType || !isSupportedEmoji(emoji)) break;
+
+                    let canReact = false;
+                    let channelServerId = null;
+                    let dmPeerId = null;
+                    if (messageType === 'channel') {
+                        const result = await pool.query(
+                            `SELECT m.id, c.server_id FROM messages m JOIN channels c ON m.channel_id = c.id WHERE m.id = $1`,
+                            [messageId]
+                        );
+                        if (!result.rows[0]) break;
+                        channelServerId = result.rows[0].server_id;
+                        const mem = await pool.query('SELECT 1 FROM server_members WHERE server_id = $1 AND user_id = $2', [channelServerId, odego]);
+                        canReact = !!mem.rows[0];
+                    } else if (messageType === 'direct') {
+                        const dm = await pool.query('SELECT sender_id, recipient_id FROM direct_messages WHERE id = $1', [messageId]);
+                        if (!dm.rows[0]) break;
+                        canReact = dm.rows[0].sender_id === odego || dm.rows[0].recipient_id === odego;
+                        dmPeerId = dm.rows[0].sender_id === odego ? dm.rows[0].recipient_id : dm.rows[0].sender_id;
+                    }
+                    if (!canReact) break;
+
+                    const existing = await pool.query(
+                        'SELECT id FROM message_reactions WHERE message_type = $1 AND message_id = $2 AND user_id = $3 AND emoji = $4',
+                        [messageType, messageId, odego, emoji]
+                    );
+                    if (existing.rows[0]) {
+                        await pool.query('DELETE FROM message_reactions WHERE id = $1', [existing.rows[0].id]);
+                    } else {
+                        await pool.query(
+                            'INSERT INTO message_reactions (id, message_type, message_id, user_id, emoji) VALUES ($1, $2, $3, $4, $5)',
+                            [uuidv4(), messageType, messageId, odego, emoji]
+                        );
+                    }
+
+                    const reactions = await buildReactionPayload(messageType, messageId, odego);
+                    const event = { type: 'MESSAGE_REACTION_UPDATE', messageId, messageType, reactions };
+                    if (messageType === 'channel' && channelServerId) {
+                        broadcastToServer(channelServerId, event);
+                    } else if (messageType === 'direct' && dmPeerId) {
+                        sendToUser(odego, event);
+                        sendToUser(dmPeerId, event);
                     }
                     break;
                 }
@@ -1001,6 +1113,14 @@ app.delete('/api/channels/:channelId', authenticateToken, async (req, res) => {
 });
 
 // ============================================
+// REST API - EMOJI
+// ============================================
+
+app.get('/api/emojis', authenticateToken, async (req, res) => {
+    res.json(EMOJI_CATALOG);
+});
+
+// ============================================
 // REST API - MESSAGES
 // ============================================
 
@@ -1017,7 +1137,10 @@ app.get('/api/channels/:channelId/messages', authenticateToken, async (req, res)
             'SELECT m.*, u.username, u.avatar_url FROM messages m JOIN users u ON m.author_id = u.id WHERE m.channel_id = $1 ORDER BY m.created_at DESC LIMIT $2',
             [req.params.channelId, parseInt(limit)]
         );
-        res.json(result.rows.reverse());
+        const rows = result.rows.reverse();
+        const reactionsMap = await getReactionsForMessages('channel', rows.map(m => m.id), req.user.id);
+        rows.forEach(m => { m.reactions = reactionsMap.get(m.id) || []; });
+        res.json(rows);
     } catch (e) {
         res.status(500).json({ error: 'Ошибка сервера' });
     }
@@ -1038,8 +1161,9 @@ app.post('/api/channels/:channelId/messages', authenticateToken, async (req, res
         await pool.query('INSERT INTO messages (id, channel_id, author_id, content) VALUES ($1, $2, $3, $4)', [msgId, req.params.channelId, req.user.id, content.trim()]);
         
         const result = await pool.query('SELECT m.*, u.username, u.avatar_url FROM messages m JOIN users u ON m.author_id = u.id WHERE m.id = $1', [msgId]);
-        broadcastToServer(channel.rows[0].server_id, { type: 'NEW_CHANNEL_MESSAGE', message: result.rows[0] });
-        res.status(201).json(result.rows[0]);
+        const payload = { ...result.rows[0], reactions: [] };
+        broadcastToServer(channel.rows[0].server_id, { type: 'NEW_CHANNEL_MESSAGE', message: payload });
+        res.status(201).json(payload);
     } catch (e) {
         res.status(500).json({ error: 'Ошибка сервера' });
     }
@@ -1074,7 +1198,10 @@ app.get('/api/dm/:odego', authenticateToken, async (req, res) => {
             WHERE (dm.sender_id = $1 AND dm.recipient_id = $2) OR (dm.sender_id = $2 AND dm.recipient_id = $1)
             ORDER BY dm.created_at DESC LIMIT $3
         `, [req.user.id, req.params.odego, parseInt(limit)]);
-        res.json(result.rows.reverse());
+        const rows = result.rows.reverse();
+        const reactionsMap = await getReactionsForMessages('direct', rows.map(m => m.id), req.user.id);
+        rows.forEach(m => { m.reactions = reactionsMap.get(m.id) || []; });
+        res.json(rows);
     } catch (e) {
         res.status(500).json({ error: 'Ошибка сервера' });
     }
@@ -1098,9 +1225,79 @@ app.post('/api/dm/:odego', authenticateToken, async (req, res) => {
             recipient_username: recipient.rows[0].username, recipient_avatar: recipient.rows[0].avatar_url
         };
         
+        msg.reactions = [];
         sendToUser(req.user.id, { type: 'NEW_DIRECT_MESSAGE', message: msg });
         sendToUser(req.params.odego, { type: 'NEW_DIRECT_MESSAGE', message: msg });
         res.status(201).json(msg);
+    } catch (e) {
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+// ============================================
+// REST API - REACTIONS
+// ============================================
+
+app.post('/api/messages/:messageType/:messageId/reactions', authenticateToken, async (req, res) => {
+    try {
+        const { messageType, messageId } = req.params;
+        const { emoji } = req.body;
+        if (!['channel', 'direct'].includes(messageType)) return res.status(400).json({ error: 'Некорректный тип сообщения' });
+        if (!isSupportedEmoji(emoji)) return res.status(400).json({ error: 'Смайлик не поддерживается' });
+
+        let channelServerId = null;
+        let dmPeerId = null;
+        if (messageType === 'channel') {
+            const message = await pool.query(
+                `SELECT m.id, c.server_id FROM messages m JOIN channels c ON m.channel_id = c.id WHERE m.id = $1`,
+                [messageId]
+            );
+            if (!message.rows[0]) return res.status(404).json({ error: 'Сообщение не найдено' });
+            channelServerId = message.rows[0].server_id;
+            const mem = await pool.query('SELECT 1 FROM server_members WHERE server_id = $1 AND user_id = $2', [channelServerId, req.user.id]);
+            if (!mem.rows[0]) return res.status(403).json({ error: 'Нет доступа' });
+        } else {
+            const dm = await pool.query('SELECT sender_id, recipient_id FROM direct_messages WHERE id = $1', [messageId]);
+            if (!dm.rows[0]) return res.status(404).json({ error: 'Сообщение не найдено' });
+            if (dm.rows[0].sender_id !== req.user.id && dm.rows[0].recipient_id !== req.user.id) {
+                return res.status(403).json({ error: 'Нет доступа' });
+            }
+            dmPeerId = dm.rows[0].sender_id === req.user.id ? dm.rows[0].recipient_id : dm.rows[0].sender_id;
+        }
+
+        const exists = await pool.query(
+            'SELECT id FROM message_reactions WHERE message_type = $1 AND message_id = $2 AND user_id = $3 AND emoji = $4',
+            [messageType, messageId, req.user.id, emoji]
+        );
+        if (exists.rows[0]) return res.json({ toggled: false, reactions: await buildReactionPayload(messageType, messageId, req.user.id) });
+
+        await pool.query(
+            'INSERT INTO message_reactions (id, message_type, message_id, user_id, emoji) VALUES ($1, $2, $3, $4, $5)',
+            [uuidv4(), messageType, messageId, req.user.id, emoji]
+        );
+        const reactions = await buildReactionPayload(messageType, messageId, req.user.id);
+        const event = { type: 'MESSAGE_REACTION_UPDATE', messageId, messageType, reactions };
+        if (messageType === 'channel' && channelServerId) broadcastToServer(channelServerId, event);
+        if (messageType === 'direct' && dmPeerId) { sendToUser(req.user.id, event); sendToUser(dmPeerId, event); }
+        res.json({ toggled: true, reactions });
+    } catch (e) {
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+app.delete('/api/messages/:messageType/:messageId/reactions', authenticateToken, async (req, res) => {
+    try {
+        const { messageType, messageId } = req.params;
+        const { emoji } = req.body;
+        if (!['channel', 'direct'].includes(messageType)) return res.status(400).json({ error: 'Некорректный тип сообщения' });
+        if (!isSupportedEmoji(emoji)) return res.status(400).json({ error: 'Смайлик не поддерживается' });
+
+        await pool.query(
+            'DELETE FROM message_reactions WHERE message_type = $1 AND message_id = $2 AND user_id = $3 AND emoji = $4',
+            [messageType, messageId, req.user.id, emoji]
+        );
+        const reactions = await buildReactionPayload(messageType, messageId, req.user.id);
+        res.json({ removed: true, reactions });
     } catch (e) {
         res.status(500).json({ error: 'Ошибка сервера' });
     }
@@ -1322,6 +1519,20 @@ function getClientHTML() {
         .message .author { font-weight: 500; color: var(--text-primary); }
         .message .timestamp { font-size: 11px; color: #777d86; }
         .message .text { color: var(--text-secondary); word-wrap: break-word; line-height: 1.4; }
+        .message-reactions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+        .reaction-chip { border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: var(--text-primary); border-radius: 999px; padding: 3px 8px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+        .reaction-chip:hover { background: rgba(255,255,255,0.09); }
+        .reaction-chip.active { background: rgba(88,101,242,0.25); border-color: rgba(88,101,242,0.5); }
+        .reaction-chip.nitro { border-color: rgba(255,138,251,0.45); box-shadow: inset 0 0 0 1px rgba(255,138,251,0.2); }
+        .reaction-add-btn { border: 1px dashed rgba(255,255,255,0.22); border-radius: 999px; background: transparent; color: var(--text-muted); width: 26px; height: 22px; cursor: pointer; }
+        .reaction-add-btn:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.45); }
+        .message-extra-actions { display: flex; align-items: center; gap: 8px; }
+        .emoji-picker { position: absolute; background: #1e1f22; border: 1px solid #2f3136; border-radius: 10px; width: 280px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 40; }
+        .emoji-picker-header { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+        .emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+        .emoji-btn { background: transparent; border: none; font-size: 20px; cursor: pointer; border-radius: 6px; padding: 3px; }
+        .emoji-btn:hover { background: rgba(255,255,255,0.08); }
+        .emoji-btn.nitro::after { content: '✦'; font-size: 9px; color: #ff8afb; position: relative; top: -8px; left: -2px; }
         .message-input-container { padding: 0 16px 24px; flex-shrink: 0; }
         .message-input { display: flex; align-items: center; background: #3a3d44; border-radius: 10px; padding: 0 12px; min-height: 44px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05); }
         .message-input input { flex: 1; background: none; border: none; padding: 12px 0; color: var(--text-primary); font-size: 16px; }
@@ -1435,6 +1646,8 @@ function getClientHTML() {
     var currentDM = null;
     var messages = [];
     var typingUsers = {};
+    var emojiCatalog = [];
+    var emojiPickerState = null;
     var reconnectAttempts = 0;
     var wsReconnectTimer = null;
 
@@ -1490,6 +1703,14 @@ function getClientHTML() {
     function $(s) { return document.querySelector(s); }
     function $$(s) { return document.querySelectorAll(s); }
     function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+    document.addEventListener('click', function() {
+        if (emojiPickerState) {
+            emojiPickerState = null;
+            if (currentChannel) renderChatArea();
+            else if (currentDM) renderDMChatArea();
+        }
+    });
 
     function icon(name, cls) {
         var icons = {
@@ -1668,6 +1889,12 @@ function getClientHTML() {
                 if (currentDM && (d.message.sender_id === currentDM.id || d.message.recipient_id === currentDM.id)) {
                     messages.push(d.message); renderMessages(); scrollToBottom();
                 }
+                break;
+            case 'MESSAGE_REACTION_UPDATE':
+                messages.forEach(function(m) {
+                    if (m.id === d.messageId) m.reactions = d.reactions || [];
+                });
+                renderMessages();
                 break;
             case 'USER_TYPING': handleTyping(d); break;
             case 'USER_STATUS_CHANGE': updateUserStatus(d.visitorId, d.status); break;
@@ -2795,7 +3022,7 @@ function getClientHTML() {
                     currentUser = d.user;
                     localStorage.setItem('token', token);
                     connectWebSocket();
-                    return loadIceConfig().then(function() { return loadServers(); });
+                    return Promise.all([loadIceConfig(), loadServers(), loadEmojis()]);
                 })
                 .then(function() { render(); })
                 .catch(function(e) { $('#authError').innerHTML = '<div class="error-msg">' + e.message + '</div>'; });
@@ -3133,6 +3360,69 @@ function getClientHTML() {
         });
     }
 
+
+    function getCurrentMessageType() {
+        return currentChannel ? 'channel' : (currentDM ? 'direct' : null);
+    }
+
+    function renderEmojiPicker(targetId) {
+        if (!emojiCatalog.length || !emojiPickerState || emojiPickerState.targetId !== targetId) return '';
+        var normal = emojiCatalog.filter(function(e){ return !e.nitro; });
+        var nitro = emojiCatalog.filter(function(e){ return e.nitro; });
+        var html = '<div class="emoji-picker" id="emojiPicker">';
+        html += '<div class="emoji-picker-header"><span>Смайлики Discord</span><span>Nitro ✦</span></div>';
+        html += '<div class="emoji-grid">';
+        normal.forEach(function(e) { html += '<button class="emoji-btn" data-emoji="' + e.emoji + '" title="' + e.name + '">' + e.emoji + '</button>'; });
+        nitro.forEach(function(e) { html += '<button class="emoji-btn nitro" data-emoji="' + e.emoji + '" title="' + e.name + '">' + e.emoji + '</button>'; });
+        html += '</div></div>';
+        return html;
+    }
+
+    function setupEmojiButtons() {
+        $$('.emoji-btn[data-emoji]').forEach(function(btn) {
+            btn.onclick = function(ev) {
+                ev.stopPropagation();
+                var emoji = btn.getAttribute('data-emoji');
+                if (!emojiPickerState) return;
+                if (emojiPickerState.mode === 'input') {
+                    insertEmojiToInput(emoji);
+                } else if (emojiPickerState.mode === 'reaction') {
+                    toggleReaction(emojiPickerState.messageId, emojiPickerState.messageType, emoji);
+                }
+                emojiPickerState = null;
+                renderMessages();
+            };
+        });
+    }
+
+    function insertEmojiToInput(emoji) {
+        var inp = $('#messageInput');
+        if (!inp) return;
+        var start = inp.selectionStart || inp.value.length;
+        var end = inp.selectionEnd || inp.value.length;
+        inp.value = inp.value.slice(0, start) + emoji + inp.value.slice(end);
+        var pos = start + emoji.length;
+        inp.focus();
+        inp.setSelectionRange(pos, pos);
+    }
+
+    function toggleReaction(messageId, messageType, emoji) {
+        var message = messages.find(function(m) { return m.id === messageId; });
+        var hasMine = message && Array.isArray(message.reactions) && message.reactions.some(function(r){ return r.emoji === emoji && r.reacted_by_me; });
+        var method = hasMine ? 'DELETE' : 'POST';
+        api('/api/messages/' + messageType + '/' + messageId + '/reactions', {
+            method: method,
+            body: JSON.stringify({ emoji: emoji })
+        }).then(function(res) {
+            if (message) {
+                message.reactions = res.reactions || [];
+                renderMessages();
+            }
+        }).catch(function(err) {
+            alert(err.message || 'Не удалось поставить реакцию');
+        });
+    }
+
     function renderChatArea() {
         var c = $('#chatArea'); if (!c) return;
         if (!currentChannel) {
@@ -3145,7 +3435,8 @@ function getClientHTML() {
             '<div class="typing-indicator"></div>' +
             '<div class="message-input-container"><div class="message-input">' +
             '<input type="text" id="messageInput" placeholder="Написать в #' + escapeHtml(currentChannel.name) + '" maxlength="2000">' +
-            '<button id="sendBtn">' + icon('send') + '</button></div></div>';
+            '<div class="message-extra-actions"><button id="emojiBtn" title="Смайлики">😊</button><button id="sendBtn">' + icon('send') + '</button></div>' +
+            '</div>' + renderEmojiPicker('input') + '</div>';
         renderMessages();
         setupMessageInput();
     }
@@ -3156,18 +3447,43 @@ function getClientHTML() {
             c.innerHTML = '<div class="empty-state"><div class="icon">' + icon('message') + '</div><h3>Начните общение!</h3><p>Отправьте первое сообщение</p></div>';
             return;
         }
+        var messageType = getCurrentMessageType();
         var html = '';
         messages.forEach(function(m) {
             var un = m.username || m.sender_username;
-            html += '<div class="message">';
+            html += '<div class="message" data-message-id="' + m.id + '">';
             html += '<div class="avatar">' + renderAvatarContent(un, m.avatar_url || m.sender_avatar || m.recipient_avatar) + '</div>';
             html += '<div class="content">';
             html += '<div class="header"><span class="author">' + escapeHtml(un) + '</span>';
             html += '<span class="timestamp">' + formatTime(m.created_at) + '</span></div>';
             html += '<div class="text">' + escapeHtml(m.content) + '</div>';
+            html += '<div class="message-reactions">';
+            (m.reactions || []).forEach(function(r) {
+                html += '<button class="reaction-chip ' + (r.reacted_by_me ? 'active' : '') + ' ' + (r.nitro ? 'nitro' : '') + '" data-reaction-emoji="' + r.emoji + '" data-message-id="' + m.id + '">';
+                html += '<span>' + r.emoji + '</span><span>' + r.count + '</span></button>';
+            });
+            html += '<button class="reaction-add-btn" data-add-reaction="' + m.id + '" title="Добавить реакцию">+</button>';
+            if (emojiPickerState && emojiPickerState.mode === 'reaction' && emojiPickerState.messageId === m.id) {
+                html += renderEmojiPicker('msg:' + m.id);
+            }
+            html += '</div>';
             html += '</div></div>';
         });
         c.innerHTML = html;
+        $$('.reaction-chip[data-reaction-emoji]').forEach(function(el) {
+            el.onclick = function() {
+                toggleReaction(el.getAttribute('data-message-id'), messageType, el.getAttribute('data-reaction-emoji'));
+            };
+        });
+        $$('.reaction-add-btn[data-add-reaction]').forEach(function(el) {
+            el.onclick = function(ev) {
+                ev.stopPropagation();
+                var id = el.getAttribute('data-add-reaction');
+                emojiPickerState = { mode: 'reaction', messageId: id, messageType: messageType, targetId: 'msg:' + id };
+                renderMessages();
+            };
+        });
+        setupEmojiButtons();
         scrollToBottom();
     }
 
@@ -3267,7 +3583,8 @@ function getClientHTML() {
             '<div class="typing-indicator"></div>' +
             '<div class="message-input-container"><div class="message-input">' +
             '<input type="text" id="messageInput" placeholder="Написать @' + escapeHtml(currentDM.username) + '" maxlength="2000">' +
-            '<button id="sendDMBtn">' + icon('send') + '</button></div></div>';
+            '<div class="message-extra-actions"><button id="emojiBtn" title="Смайлики">😊</button><button id="sendDMBtn">' + icon('send') + '</button></div>' +
+            '</div>' + renderEmojiPicker('input') + '</div>';
         renderMessages();
         setupDMInput();
     }
@@ -3350,6 +3667,10 @@ function getClientHTML() {
 
     function closeModal() { $('#modalContainer').innerHTML = ''; }
 
+    function loadEmojis() {
+        return api('/api/emojis').then(function(d) { emojiCatalog = d || []; });
+    }
+
     function loadServers() {
         return api('/api/servers').then(function(d) { servers = d; });
     }
@@ -3394,6 +3715,15 @@ function getClientHTML() {
         };
         inp.focus();
         $('#sendBtn').onclick = sendMessage;
+        if ($('#emojiBtn')) {
+            $('#emojiBtn').onclick = function(ev) {
+                ev.stopPropagation();
+                emojiPickerState = emojiPickerState && emojiPickerState.mode === 'input' ? null : { mode: 'input', targetId: 'input' };
+                renderChatArea();
+                setupEmojiButtons();
+            };
+        }
+        setupEmojiButtons();
     }
 
     function sendMessage() {
@@ -3433,6 +3763,15 @@ function getClientHTML() {
         };
         inp.focus();
         $('#sendDMBtn').onclick = sendDM;
+        if ($('#emojiBtn')) {
+            $('#emojiBtn').onclick = function(ev) {
+                ev.stopPropagation();
+                emojiPickerState = emojiPickerState && emojiPickerState.mode === 'input' ? null : { mode: 'input', targetId: 'input' };
+                renderDMChatArea();
+                setupEmojiButtons();
+            };
+        }
+        setupEmojiButtons();
     }
 
     function sendDM() {
@@ -3543,7 +3882,7 @@ function getClientHTML() {
                     currentUser = u;
                     connectWebSocket();
                     // ИСПРАВЛЕНИЕ 11: Загружаем ICE-конфиг параллельно с серверами.
-                    return Promise.all([loadIceConfig(), loadServers()]);
+                    return Promise.all([loadIceConfig(), loadServers(), loadEmojis()]);
                 })
                 .then(function() { render(); })
                 .catch(function() {
