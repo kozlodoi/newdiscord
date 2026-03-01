@@ -1086,6 +1086,14 @@ app.get('/api/users/:odego', authenticateToken, async (req, res) => {
 });
 
 // ============================================
+// ICE CONFIG ENDPOINT
+// ============================================
+
+app.get('/api/ice-config', authenticateToken, (req, res) => {
+    res.json({ iceServers: ICE_SERVERS });
+});
+
+// ============================================
 // HEALTH CHECK
 // ============================================
 
