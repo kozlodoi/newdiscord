@@ -184,6 +184,8 @@ async function initializeDatabase() {
             DELETE FROM message_reactions
             WHERE id IN (SELECT id FROM ranked WHERE rn > 1);
             ALTER TABLE message_reactions ADD CONSTRAINT message_reactions_message_type_message_id_user_id_key UNIQUE (message_type, message_id, user_id);
+                UNIQUE(message_type, message_id, user_id, emoji)
+            );
             CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id);
             CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_reactions_message ON message_reactions(message_type, message_id);
@@ -738,6 +740,16 @@ wss.on('connection', (ws) => {
                     } else {
                         const insertReactionSql = 'INSERT INTO message_reactions (id, message_type, message_id, user_id, emoji) VALUES ($1, $2, $3, $4, $5)';
                         await pool.query(insertReactionSql, [uuidv4(), messageType, messageId, odego, emoji]);
+                        'SELECT id FROM message_reactions WHERE message_type = $1 AND message_id = $2 AND user_id = $3 AND emoji = $4',
+                        [messageType, messageId, odego, emoji]
+                    );
+                    if (existing.rows[0]) {
+                        await pool.query('DELETE FROM message_reactions WHERE id = $1', [existing.rows[0].id]);
+                    } else {
+                        await pool.query(
+                            'INSERT INTO message_reactions (id, message_type, message_id, user_id, emoji) VALUES ($1, $2, $3, $4, $5)',
+                            [uuidv4(), messageType, messageId, odego, emoji]
+                        );
                     }
 
                     const reactions = await buildReactionPayload(messageType, messageId, odego);
@@ -1291,6 +1303,20 @@ app.post('/api/messages/:messageType/:messageId/reactions', authenticateToken, a
             const insertReactionSql = 'INSERT INTO message_reactions (id, message_type, message_id, user_id, emoji) VALUES ($1, $2, $3, $4, $5)';
             await pool.query(insertReactionSql, [uuidv4(), messageType, messageId, req.user.id, emoji]);
         }
+            await pool.query(
+                'INSERT INTO message_reactions (id, message_type, message_id, user_id, emoji) VALUES ($1, $2, $3, $4, $5)',
+                [uuidv4(), messageType, messageId, req.user.id, emoji]
+            );
+        }
+            'SELECT id FROM message_reactions WHERE message_type = $1 AND message_id = $2 AND user_id = $3 AND emoji = $4',
+            [messageType, messageId, req.user.id, emoji]
+        );
+        if (exists.rows[0]) return res.json({ toggled: false, reactions: await buildReactionPayload(messageType, messageId, req.user.id) });
+
+        await pool.query(
+            'INSERT INTO message_reactions (id, message_type, message_id, user_id, emoji) VALUES ($1, $2, $3, $4, $5)',
+            [uuidv4(), messageType, messageId, req.user.id, emoji]
+        );
         const reactions = await buildReactionPayload(messageType, messageId, req.user.id);
         const event = { type: 'MESSAGE_REACTION_UPDATE', messageId, messageType, reactions };
         if (messageType === 'channel' && channelServerId) broadcastToServer(channelServerId, event);
@@ -1536,6 +1562,7 @@ function getClientHTML() {
         .message .timestamp { font-size: 11px; color: #777d86; }
         .message .text { color: var(--text-secondary); word-wrap: break-word; line-height: 1.4; }
         .message-reactions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; position: relative; }
+        .message-reactions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
         .reaction-chip { border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: var(--text-primary); border-radius: 999px; padding: 3px 8px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
         .reaction-chip:hover { background: rgba(255,255,255,0.09); }
         .reaction-chip.active { background: rgba(88,101,242,0.25); border-color: rgba(88,101,242,0.5); }
@@ -1546,12 +1573,17 @@ function getClientHTML() {
         .emoji-picker { position: absolute; background: #1e1f22; border: 1px solid #2f3136; border-radius: 10px; width: 280px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 999; top: auto; }
         .emoji-picker.for-input { right: 0; left: auto; bottom: calc(100% + 8px); top: auto; }
         .emoji-picker.for-reaction { left: 0; right: auto; bottom: calc(100% + 6px); top: auto; }
+        .emoji-picker { position: absolute; background: #1e1f22; border: 1px solid #2f3136; border-radius: 10px; width: 280px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 90; }
+        .emoji-picker.for-input { right: 0; bottom: calc(100% + 8px); }
+        .emoji-picker.for-reaction { left: 0; bottom: calc(100% + 6px); }
+        .emoji-picker { position: absolute; background: #1e1f22; border: 1px solid #2f3136; border-radius: 10px; width: 280px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 40; }
         .emoji-picker-header { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
         .emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
         .emoji-btn { background: transparent; border: none; font-size: 20px; cursor: pointer; border-radius: 6px; padding: 3px; }
         .emoji-btn:hover { background: rgba(255,255,255,0.08); }
         .emoji-btn.nitro::after { content: '✦'; font-size: 9px; color: #ff8afb; position: relative; top: -8px; left: -2px; }
         .message-input-container { padding: 0 16px 24px; flex-shrink: 0; position: relative; }
+        .message-input-container { padding: 0 16px 24px; flex-shrink: 0; }
         .message-input { display: flex; align-items: center; background: #3a3d44; border-radius: 10px; padding: 0 12px; min-height: 44px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05); }
         .message-input input { flex: 1; background: none; border: none; padding: 12px 0; color: var(--text-primary); font-size: 16px; }
         .message-input input:focus { outline: none; }
@@ -3389,6 +3421,7 @@ function getClientHTML() {
         var nitro = emojiCatalog.filter(function(e){ return e.nitro; });
         var cls = emojiPickerState.mode === 'reaction' ? 'for-reaction' : 'for-input';
         var html = '<div class="emoji-picker ' + cls + '" id="emojiPicker">';
+        var html = '<div class="emoji-picker" id="emojiPicker">';
         html += '<div class="emoji-picker-header"><span>Смайлики Discord</span><span>Nitro ✦</span></div>';
         html += '<div class="emoji-grid">';
         normal.forEach(function(e) { html += '<button class="emoji-btn" data-emoji="' + e.emoji + '" title="' + e.name + '">' + e.emoji + '</button>'; });
@@ -3420,6 +3453,13 @@ function getClientHTML() {
                 } else {
                     renderMessages();
                 }
+                if (emojiPickerState.mode === 'input') {
+                    insertEmojiToInput(emoji);
+                } else if (emojiPickerState.mode === 'reaction') {
+                    toggleReaction(emojiPickerState.messageId, emojiPickerState.messageType, emoji);
+                }
+                emojiPickerState = null;
+                renderMessages();
             };
         });
     }
