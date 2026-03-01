@@ -59,6 +59,19 @@ const server = http.createServer(app);
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 
+const MAX_INLINE_IMAGE_SIZE = 4 * 1024 * 1024;
+
+function sanitizeInlineImage(imageData) {
+    if (!imageData || typeof imageData !== 'string') return null;
+    const trimmed = imageData.trim();
+    const match = trimmed.match(/^data:image\/(png|jpe?g|gif|webp);base64,([A-Za-z0-9+/=]+)$/i);
+    if (!match) return null;
+    const base64Payload = match[2];
+    const byteLength = Buffer.byteLength(base64Payload, 'base64');
+    if (!byteLength || byteLength > MAX_INLINE_IMAGE_SIZE) return null;
+    return trimmed;
+}
+
 // ============================================
 // POSTGRESQL
 // ============================================
@@ -152,6 +165,7 @@ async function initializeDatabase() {
                 channel_id UUID NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
                 author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 content TEXT NOT NULL,
+                image_url TEXT,
                 edited_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -160,9 +174,14 @@ async function initializeDatabase() {
                 sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 recipient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 content TEXT NOT NULL,
+                image_url TEXT,
                 read_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            ALTER TABLE messages ADD COLUMN IF NOT EXISTS image_url TEXT;
+            ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS image_url TEXT;
+            ALTER TABLE messages ALTER COLUMN content DROP NOT NULL;
+            ALTER TABLE direct_messages ALTER COLUMN content DROP NOT NULL;
             CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id);
             CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at DESC);
         `);
@@ -565,8 +584,10 @@ wss.on('connection', (ws) => {
                     break;
 
                 case 'CHANNEL_MESSAGE': {
-                    const { channelId, content } = msg;
-                    if (!content?.trim() || content.length > 2000) break;
+                    const { channelId, content, imageUrl } = msg;
+                    const textContent = typeof content === 'string' ? content.trim() : '';
+                    const safeImageUrl = sanitizeInlineImage(imageUrl);
+                    if ((!textContent && !safeImageUrl) || textContent.length > 2000) break;
                     
                     const ch = await pool.query('SELECT * FROM channels WHERE id = $1', [channelId]);
                     if (!ch.rows[0]) break;
@@ -575,7 +596,7 @@ wss.on('connection', (ws) => {
                     if (!mem.rows[0]) break;
                     
                     const msgId = uuidv4();
-                    await pool.query('INSERT INTO messages (id, channel_id, author_id, content) VALUES ($1, $2, $3, $4)', [msgId, channelId, odego, content.trim()]);
+                    await pool.query('INSERT INTO messages (id, channel_id, author_id, content, image_url) VALUES ($1, $2, $3, $4, $5)', [msgId, channelId, odego, textContent || null, safeImageUrl]);
                     
                     const newMsg = await pool.query('SELECT m.*, u.username, u.avatar_url FROM messages m JOIN users u ON m.author_id = u.id WHERE m.id = $1', [msgId]);
                     broadcastToServer(ch.rows[0].server_id, { type: 'NEW_CHANNEL_MESSAGE', message: newMsg.rows[0] });
@@ -583,18 +604,20 @@ wss.on('connection', (ws) => {
                 }
 
                 case 'DIRECT_MESSAGE': {
-                    const { recipientId, content } = msg;
-                    if (!content?.trim() || content.length > 2000) break;
+                    const { recipientId, content, imageUrl } = msg;
+                    const textContent = typeof content === 'string' ? content.trim() : '';
+                    const safeImageUrl = sanitizeInlineImage(imageUrl);
+                    if ((!textContent && !safeImageUrl) || textContent.length > 2000) break;
                     
                     const recipient = await pool.query('SELECT id, username, avatar_url FROM users WHERE id = $1', [recipientId]);
                     if (!recipient.rows[0]) break;
                     
                     const msgId = uuidv4();
-                    await pool.query('INSERT INTO direct_messages (id, sender_id, recipient_id, content) VALUES ($1, $2, $3, $4)', [msgId, odego, recipientId, content.trim()]);
+                    await pool.query('INSERT INTO direct_messages (id, sender_id, recipient_id, content, image_url) VALUES ($1, $2, $3, $4, $5)', [msgId, odego, recipientId, textContent || null, safeImageUrl]);
                     
                     const sender = await pool.query('SELECT username, avatar_url FROM users WHERE id = $1', [odego]);
                     const newMsg = {
-                        id: msgId, sender_id: odego, recipient_id: recipientId, content: content.trim(),
+                        id: msgId, sender_id: odego, recipient_id: recipientId, content: textContent || null, image_url: safeImageUrl,
                         created_at: new Date().toISOString(),
                         sender_username: sender.rows[0].username, sender_avatar: sender.rows[0].avatar_url,
                         recipient_username: recipient.rows[0].username, recipient_avatar: recipient.rows[0].avatar_url
@@ -1025,8 +1048,10 @@ app.get('/api/channels/:channelId/messages', authenticateToken, async (req, res)
 
 app.post('/api/channels/:channelId/messages', authenticateToken, async (req, res) => {
     try {
-        const { content } = req.body;
-        if (!content?.trim() || content.length > 2000) return res.status(400).json({ error: 'Некорректное сообщение' });
+        const { content, imageUrl } = req.body;
+        const textContent = typeof content === 'string' ? content.trim() : '';
+        const safeImageUrl = sanitizeInlineImage(imageUrl);
+        if ((!textContent && !safeImageUrl) || textContent.length > 2000) return res.status(400).json({ error: 'Некорректное сообщение' });
         
         const channel = await pool.query('SELECT * FROM channels WHERE id = $1', [req.params.channelId]);
         if (!channel.rows[0]) return res.status(404).json({ error: 'Канал не найден' });
@@ -1035,7 +1060,7 @@ app.post('/api/channels/:channelId/messages', authenticateToken, async (req, res
         if (!mem.rows[0]) return res.status(403).json({ error: 'Нет доступа' });
         
         const msgId = uuidv4();
-        await pool.query('INSERT INTO messages (id, channel_id, author_id, content) VALUES ($1, $2, $3, $4)', [msgId, req.params.channelId, req.user.id, content.trim()]);
+        await pool.query('INSERT INTO messages (id, channel_id, author_id, content, image_url) VALUES ($1, $2, $3, $4, $5)', [msgId, req.params.channelId, req.user.id, textContent || null, safeImageUrl]);
         
         const result = await pool.query('SELECT m.*, u.username, u.avatar_url FROM messages m JOIN users u ON m.author_id = u.id WHERE m.id = $1', [msgId]);
         broadcastToServer(channel.rows[0].server_id, { type: 'NEW_CHANNEL_MESSAGE', message: result.rows[0] });
@@ -1082,18 +1107,20 @@ app.get('/api/dm/:odego', authenticateToken, async (req, res) => {
 
 app.post('/api/dm/:odego', authenticateToken, async (req, res) => {
     try {
-        const { content } = req.body;
-        if (!content?.trim() || content.length > 2000) return res.status(400).json({ error: 'Некорректное сообщение' });
+        const { content, imageUrl } = req.body;
+        const textContent = typeof content === 'string' ? content.trim() : '';
+        const safeImageUrl = sanitizeInlineImage(imageUrl);
+        if ((!textContent && !safeImageUrl) || textContent.length > 2000) return res.status(400).json({ error: 'Некорректное сообщение' });
         
         const recipient = await pool.query('SELECT id, username, avatar_url FROM users WHERE id = $1', [req.params.odego]);
         if (!recipient.rows[0]) return res.status(404).json({ error: 'Пользователь не найден' });
         
         const msgId = uuidv4();
-        await pool.query('INSERT INTO direct_messages (id, sender_id, recipient_id, content) VALUES ($1, $2, $3, $4)', [msgId, req.user.id, req.params.odego, content.trim()]);
+        await pool.query('INSERT INTO direct_messages (id, sender_id, recipient_id, content, image_url) VALUES ($1, $2, $3, $4, $5)', [msgId, req.user.id, req.params.odego, textContent || null, safeImageUrl]);
         
         const sender = await pool.query('SELECT username, avatar_url FROM users WHERE id = $1', [req.user.id]);
         const msg = {
-            id: msgId, sender_id: req.user.id, recipient_id: req.params.odego, content: content.trim(), created_at: new Date().toISOString(),
+            id: msgId, sender_id: req.user.id, recipient_id: req.params.odego, content: textContent || null, image_url: safeImageUrl, created_at: new Date().toISOString(),
             sender_username: sender.rows[0].username, sender_avatar: sender.rows[0].avatar_url,
             recipient_username: recipient.rows[0].username, recipient_avatar: recipient.rows[0].avatar_url
         };
@@ -1322,13 +1349,20 @@ function getClientHTML() {
         .message .author { font-weight: 500; color: var(--text-primary); }
         .message .timestamp { font-size: 11px; color: #777d86; }
         .message .text { color: var(--text-secondary); word-wrap: break-word; line-height: 1.4; }
+        .message .attachment { margin-top: 8px; border-radius: 10px; max-width: min(420px, 100%); max-height: 320px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1); }
         .message-input-container { padding: 0 16px 24px; flex-shrink: 0; }
-        .message-input { display: flex; align-items: center; background: #3a3d44; border-radius: 10px; padding: 0 12px; min-height: 44px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05); }
+        .message-input { display: flex; align-items: center; gap: 8px; background: #3a3d44; border-radius: 10px; padding: 0 12px; min-height: 44px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05); }
         .message-input input { flex: 1; background: none; border: none; padding: 12px 0; color: var(--text-primary); font-size: 16px; }
         .message-input input:focus { outline: none; }
         .message-input input::placeholder { color: var(--text-muted); }
         .message-input button { background: rgba(88,101,242,0.15); border: none; color: var(--accent); cursor: pointer; padding: 10px; font-size: 18px; border-radius: 8px; width: 38px; height: 38px; transition: all 0.2s ease; }
         .message-input button:hover { background: rgba(88,101,242,0.35); color: #fff; }
+        .message-input button.attach-btn { color: var(--text-secondary); background: rgba(255,255,255,0.1); }
+        .message-input button.attach-btn:hover { color: #fff; background: rgba(255,255,255,0.2); }
+        .attachment-preview { margin: 0 16px 10px; padding: 10px; background: rgba(255,255,255,0.04); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 12px; }
+        .attachment-preview img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; }
+        .attachment-preview .meta { flex: 1; color: var(--text-secondary); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .attachment-preview button { border: none; background: rgba(242,63,67,0.15); color: var(--red); border-radius: 6px; cursor: pointer; width: 28px; height: 28px; }
         .typing-indicator { font-size: 12px; color: var(--text-muted); padding: 6px 16px; min-height: 24px; display: flex; align-items: center; gap: 6px; }
         .typing-indicator .dots { display: inline-flex; gap: 4px; }
         .typing-indicator .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); animation: typingBlink 1.2s infinite; }
@@ -1408,6 +1442,8 @@ function getClientHTML() {
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #3f424a; border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
         .debug-panel { position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.95); color: #0f0; padding: 10px; font-family: monospace; font-size: 10px; max-width: 400px; max-height: 300px; overflow-y: auto; border-radius: 4px; z-index: 9999; display: none; }
+        .debug-toggle-btn { position: fixed; bottom: 10px; right: 10px; z-index: 10000; border: none; border-radius: 8px; background: rgba(17,18,20,0.9); color: var(--text-secondary); cursor: pointer; padding: 6px 10px; font-size: 12px; }
+        .debug-toggle-btn:hover { color: #fff; }
         .debug-panel.show { display: block; }
         .debug-panel .error { color: #f55; }
         .debug-panel .warn { color: #fa0; }
@@ -1418,6 +1454,7 @@ function getClientHTML() {
 </head>
 <body>
 <div id="app"></div>
+<button id="debugToggleBtn" class="debug-toggle-btn" type="button">Логи</button>
 <div id="debugPanel" class="debug-panel"></div>
 <script>
 (function() {
@@ -1466,7 +1503,10 @@ function getClientHTML() {
     var selectedOutputId = localStorage.getItem('selectedOutputId') || '';
 
     var debugMode = true;
+    var isDebugPanelVisible = true;
     var debugLog = [];
+    var pendingAttachment = null;
+    var pendingAttachmentName = '';
     var micTestStream = null;
     var micTestInterval = null;
     var micTestCtx = null;
@@ -1498,6 +1538,7 @@ function getClientHTML() {
             hash: '<path d="M9 3L7.8 8h4.2L13.2 3h2.1L14.1 8H19v2h-5.3l-1 5H17v2h-4.7L11 22H8.9l1.3-5H6l-1.3 5H2.6L3.9 17H0v-2h4.3l1-5H1V8h4.7L7 3zM8.2 10l-1 5h4.2l1-5z"/>',
             voice: '<path d="M12 14a4 4 0 004-4V5a4 4 0 10-8 0v5a4 4 0 004 4zm-7-4h2a5 5 0 0010 0h2a7 7 0 01-6 6.92V20h3v2H8v-2h3v-3.08A7 7 0 015 10z"/>',
             send: '<path d="M3 11.5L21 3l-5.7 18-3.6-6.9L3 11.5zm3.6.1l4.2 1.7 2.2 4.3 3.1-9.8-9.5 3.8z"/>',
+            attach: '<path d="M16.5 6.5l-7.8 7.8a3 3 0 104.2 4.2l8.5-8.5a5 5 0 00-7.1-7.1L5.8 11.4a7 7 0 109.9 9.9l6.4-6.4-1.4-1.4-6.4 6.4a5 5 0 11-7.1-7.1l8.5-8.5a3 3 0 114.2 4.2l-8.5 8.5a1 1 0 11-1.4-1.4l7.8-7.8-1.4-1.4z"/>',
             close: '<path d="M18.3 5.7l-1.4-1.4L12 9.2 7.1 4.3 5.7 5.7 10.6 10.6 5.7 15.5l1.4 1.4 4.9-4.9 4.9 4.9 1.4-1.4-4.9-4.9z"/>',
             at: '<path d="M12 4a8 8 0 100 16c1.7 0 3.2-.5 4.4-1.3l-1.1-1.6A5.9 5.9 0 0112 18a6 6 0 116-6v1.5a1.5 1.5 0 01-3 0V12a3 3 0 10-1.1 2.3A3.5 3.5 0 0019.5 13V12A7.5 7.5 0 0012 4zm0 6a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"/>',
             settings: '<path d="M19.4 13a7.8 7.8 0 000-2l2-1.5-2-3.4-2.4 1a7.4 7.4 0 00-1.7-1l-.3-2.6h-4l-.3 2.6a7.4 7.4 0 00-1.7 1l-2.4-1-2 3.4 2 1.5a7.8 7.8 0 000 2l-2 1.5 2 3.4 2.4-1c.5.4 1.1.7 1.7 1l.3 2.6h4l.3-2.6c.6-.3 1.2-.6 1.7-1l2.4 1 2-3.4-2-1.5zM12 15a3 3 0 110-6 3 3 0 010 6z"/>',
@@ -1520,6 +1561,36 @@ function getClientHTML() {
         var dt = new Date(d), now = new Date();
         var t = dt.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
         return dt.toDateString() === now.toDateString() ? 'Сегодня ' + t : dt.toLocaleDateString('ru-RU') + ' ' + t;
+    }
+
+    function updateDebugPanelVisibility() {
+        var panel = document.getElementById('debugPanel');
+        var btn = document.getElementById('debugToggleBtn');
+        var shouldShow = debugMode && isDebugPanelVisible;
+        if (panel) panel.classList.toggle('show', shouldShow);
+        if (btn) btn.textContent = shouldShow ? 'Свернуть логи' : 'Показать логи';
+    }
+
+    function clearPendingAttachment() {
+        pendingAttachment = null;
+        pendingAttachmentName = '';
+        renderAttachmentPreview();
+    }
+
+    function renderAttachmentPreview() {
+        var preview = document.getElementById('attachmentPreview');
+        if (!preview) return;
+        if (!pendingAttachment) {
+            preview.innerHTML = '';
+            preview.style.display = 'none';
+            return;
+        }
+        preview.style.display = 'flex';
+        preview.innerHTML = '<img src="' + escapeHtml(pendingAttachment) + '" alt="attachment preview">' +
+            '<div class="meta">' + escapeHtml(pendingAttachmentName || 'Изображение готово к отправке') + '</div>' +
+            '<button id="clearAttachmentBtn" type="button" title="Убрать">' + icon('close') + '</button>';
+        var clearBtn = document.getElementById('clearAttachmentBtn');
+        if (clearBtn) clearBtn.onclick = clearPendingAttachment;
     }
 
     function api(endpoint, opts) {
@@ -2754,8 +2825,7 @@ function getClientHTML() {
             html += '<div class="voice-grid-overlay" id="voiceGridOverlay"></div>';
         }
         app.innerHTML = html;
-        var dp = document.getElementById('debugPanel');
-        if (dp && debugMode) dp.classList.add('show');
+        updateDebugPanelVisibility();
         renderServerList();
         if (currentServer) {
             renderChannelSidebar();
@@ -3143,11 +3213,15 @@ function getClientHTML() {
             '<div class="chat-header"><span class="icon">' + icon('hash') + '</span><span>' + escapeHtml(currentChannel.name) + '</span></div>' +
             '<div class="messages-container" id="messagesContainer"></div>' +
             '<div class="typing-indicator"></div>' +
+            '<div class="attachment-preview" id="attachmentPreview" style="display:none;"></div>' +
             '<div class="message-input-container"><div class="message-input">' +
+            '<input type="file" id="attachmentInput" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" style="display:none;">' +
+            '<button id="attachBtn" class="attach-btn" type="button" title="Прикрепить фото">' + icon('attach') + '</button>' +
             '<input type="text" id="messageInput" placeholder="Написать в #' + escapeHtml(currentChannel.name) + '" maxlength="2000">' +
-            '<button id="sendBtn">' + icon('send') + '</button></div></div>';
+            '<button id="sendBtn" type="button">' + icon('send') + '</button></div></div>';
         renderMessages();
         setupMessageInput();
+        renderAttachmentPreview();
     }
 
     function renderMessages() {
@@ -3164,7 +3238,8 @@ function getClientHTML() {
             html += '<div class="content">';
             html += '<div class="header"><span class="author">' + escapeHtml(un) + '</span>';
             html += '<span class="timestamp">' + formatTime(m.created_at) + '</span></div>';
-            html += '<div class="text">' + escapeHtml(m.content) + '</div>';
+            if (m.content) html += '<div class="text">' + escapeHtml(m.content) + '</div>';
+            if (m.image_url) html += '<img class="attachment" src="' + escapeHtml(m.image_url) + '" alt="Вложение">';
             html += '</div></div>';
         });
         c.innerHTML = html;
@@ -3265,11 +3340,15 @@ function getClientHTML() {
             '<div class="chat-header"><span class="icon">' + icon('at') + '</span><span>' + escapeHtml(currentDM.username) + '</span></div>' +
             '<div class="messages-container" id="messagesContainer"></div>' +
             '<div class="typing-indicator"></div>' +
+            '<div class="attachment-preview" id="attachmentPreview" style="display:none;"></div>' +
             '<div class="message-input-container"><div class="message-input">' +
+            '<input type="file" id="attachmentInput" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" style="display:none;">' +
+            '<button id="attachBtn" class="attach-btn" type="button" title="Прикрепить фото">' + icon('attach') + '</button>' +
             '<input type="text" id="messageInput" placeholder="Написать @' + escapeHtml(currentDM.username) + '" maxlength="2000">' +
-            '<button id="sendDMBtn">' + icon('send') + '</button></div></div>';
+            '<button id="sendDMBtn" type="button">' + icon('send') + '</button></div></div>';
         renderMessages();
         setupDMInput();
+        renderAttachmentPreview();
     }
 
     // ============================================
@@ -3359,18 +3438,20 @@ function getClientHTML() {
             currentServer = d;
             currentChannel = d.channels ? d.channels.find(function(c) { return c.type === 'text'; }) : null;
             currentDM = null;
+            clearPendingAttachment();
             render();
             if (currentChannel) loadMessages();
         });
     }
 
-    function selectHome() { currentServer = null; currentChannel = null; render(); }
+    function selectHome() { currentServer = null; currentChannel = null; clearPendingAttachment(); render(); }
 
     function selectChannel(id) {
         if (!currentServer) return;
         var ch = currentServer.channels.find(function(c) { return c.id === id; });
         if (!ch || ch.type !== 'text') return;
         currentChannel = ch;
+        clearPendingAttachment();
         renderChatArea();
         loadMessages();
     }
@@ -3382,8 +3463,39 @@ function getClientHTML() {
         });
     }
 
+    function setupAttachmentInput() {
+        var attachBtn = $('#attachBtn');
+        var attachmentInput = $('#attachmentInput');
+        if (attachBtn && attachmentInput) {
+            attachBtn.onclick = function() { attachmentInput.click(); };
+            attachmentInput.onchange = function(e) {
+                var file = e.target.files && e.target.files[0];
+                if (!file) return;
+                if (!file.type || file.type.indexOf('image/') !== 0) {
+                    alert('Можно прикреплять только изображения');
+                    attachmentInput.value = '';
+                    return;
+                }
+                if (file.size > 4 * 1024 * 1024) {
+                    alert('Изображение слишком большое (максимум 4 МБ)');
+                    attachmentInput.value = '';
+                    return;
+                }
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    pendingAttachment = evt.target.result;
+                    pendingAttachmentName = file.name;
+                    renderAttachmentPreview();
+                };
+                reader.readAsDataURL(file);
+                attachmentInput.value = '';
+            };
+        }
+    }
+
     function setupMessageInput() {
         var inp = $('#messageInput'); if (!inp) return;
+        setupAttachmentInput();
         inp.onkeydown = function(e) {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
         };
@@ -3399,15 +3511,17 @@ function getClientHTML() {
     function sendMessage() {
         var inp = $('#messageInput');
         var content = inp && inp.value ? inp.value.trim() : '';
-        if (!content || !currentChannel) return;
+        if ((!content && !pendingAttachment) || !currentChannel) return;
         if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'CHANNEL_MESSAGE', channelId: currentChannel.id, content: content }));
+            ws.send(JSON.stringify({ type: 'CHANNEL_MESSAGE', channelId: currentChannel.id, content: content, imageUrl: pendingAttachment }));
         }
         inp.value = '';
+        clearPendingAttachment();
     }
 
     function selectDM(id, name) {
         currentDM = { id: id, username: name };
+        clearPendingAttachment();
         api('/api/dm/' + id + '?limit=50').then(function(d) {
             messages = d; renderDMChatArea();
         });
@@ -3415,6 +3529,7 @@ function getClientHTML() {
 
     function startDM(id) {
         currentServer = null; currentChannel = null;
+        clearPendingAttachment();
         api('/api/users/' + id).then(function(u) {
             currentDM = { id: id, username: u.username };
             return api('/api/dm/' + id + '?limit=50');
@@ -3423,6 +3538,7 @@ function getClientHTML() {
 
     function setupDMInput() {
         var inp = $('#messageInput'); if (!inp) return;
+        setupAttachmentInput();
         inp.onkeydown = function(e) {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendDM(); }
         };
@@ -3438,11 +3554,12 @@ function getClientHTML() {
     function sendDM() {
         var inp = $('#messageInput');
         var content = inp && inp.value ? inp.value.trim() : '';
-        if (!content || !currentDM) return;
+        if ((!content && !pendingAttachment) || !currentDM) return;
         if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'DIRECT_MESSAGE', recipientId: currentDM.id, content: content }));
+            ws.send(JSON.stringify({ type: 'DIRECT_MESSAGE', recipientId: currentDM.id, content: content, imageUrl: pendingAttachment }));
         }
         inp.value = '';
+        clearPendingAttachment();
     }
 
     function createServer() {
@@ -3518,8 +3635,7 @@ function getClientHTML() {
         if (e.ctrlKey && e.key === 'd') {
             e.preventDefault();
             debugMode = !debugMode;
-            var p = document.getElementById('debugPanel');
-            if (p) p.classList.toggle('show', debugMode);
+            updateDebugPanelVisibility();
         }
         if (e.key === 'Escape') {
             if ($('#modalOverlay')) closeModal();
@@ -3536,6 +3652,14 @@ function getClientHTML() {
     // ============================================
 
     function init() {
+        var debugToggleBtn = document.getElementById('debugToggleBtn');
+        if (debugToggleBtn) {
+            debugToggleBtn.onclick = function() {
+                isDebugPanelVisible = !isDebugPanelVisible;
+                updateDebugPanelVisibility();
+            };
+        }
+        updateDebugPanelVisibility();
         token = localStorage.getItem('token');
         if (token) {
             api('/api/auth/me')
