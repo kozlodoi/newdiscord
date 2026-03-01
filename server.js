@@ -737,6 +737,9 @@ wss.on('connection', (ws) => {
                         await pool.query('DELETE FROM message_reactions WHERE id = $1', [existing.rows[0].id]);
                     } else if (existing.rows[0]) {
                         await pool.query('UPDATE message_reactions SET emoji = $1, created_at = CURRENT_TIMESTAMP WHERE id = $2', [emoji, existing.rows[0].id]);
+                    } else {
+                        const insertReactionSql = 'INSERT INTO message_reactions (id, message_type, message_id, user_id, emoji) VALUES ($1, $2, $3, $4, $5)';
+                        await pool.query(insertReactionSql, [uuidv4(), messageType, messageId, odego, emoji]);
                         'SELECT id FROM message_reactions WHERE message_type = $1 AND message_id = $2 AND user_id = $3 AND emoji = $4',
                         [messageType, messageId, odego, emoji]
                     );
@@ -1297,6 +1300,9 @@ app.post('/api/messages/:messageType/:messageId/reactions', authenticateToken, a
         if (exists.rows[0]) {
             await pool.query('UPDATE message_reactions SET emoji = $1, created_at = CURRENT_TIMESTAMP WHERE id = $2', [emoji, exists.rows[0].id]);
         } else {
+            const insertReactionSql = 'INSERT INTO message_reactions (id, message_type, message_id, user_id, emoji) VALUES ($1, $2, $3, $4, $5)';
+            await pool.query(insertReactionSql, [uuidv4(), messageType, messageId, req.user.id, emoji]);
+        }
             await pool.query(
                 'INSERT INTO message_reactions (id, message_type, message_id, user_id, emoji) VALUES ($1, $2, $3, $4, $5)',
                 [uuidv4(), messageType, messageId, req.user.id, emoji]
