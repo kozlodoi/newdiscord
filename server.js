@@ -170,6 +170,20 @@ async function initializeDatabase() {
                 user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 emoji VARCHAR(32) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(message_type, message_id, user_id)
+            );
+            ALTER TABLE message_reactions DROP CONSTRAINT IF EXISTS message_reactions_message_type_message_id_user_id_emoji_key;
+            ALTER TABLE message_reactions DROP CONSTRAINT IF EXISTS message_reactions_message_type_message_id_user_id_key;
+            WITH ranked AS (
+                SELECT id, ROW_NUMBER() OVER (
+                    PARTITION BY message_type, message_id, user_id
+                    ORDER BY created_at DESC, id DESC
+                ) as rn
+                FROM message_reactions
+            )
+            DELETE FROM message_reactions
+            WHERE id IN (SELECT id FROM ranked WHERE rn > 1);
+            ALTER TABLE message_reactions ADD CONSTRAINT message_reactions_message_type_message_id_user_id_key UNIQUE (message_type, message_id, user_id);
                 UNIQUE(message_type, message_id, user_id, emoji)
             );
             CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id);
@@ -716,6 +730,13 @@ wss.on('connection', (ws) => {
                     if (!canReact) break;
 
                     const existing = await pool.query(
+                        'SELECT id, emoji FROM message_reactions WHERE message_type = $1 AND message_id = $2 AND user_id = $3',
+                        [messageType, messageId, odego]
+                    );
+                    if (existing.rows[0] && existing.rows[0].emoji === emoji) {
+                        await pool.query('DELETE FROM message_reactions WHERE id = $1', [existing.rows[0].id]);
+                    } else if (existing.rows[0]) {
+                        await pool.query('UPDATE message_reactions SET emoji = $1, created_at = CURRENT_TIMESTAMP WHERE id = $2', [emoji, existing.rows[0].id]);
                         'SELECT id FROM message_reactions WHERE message_type = $1 AND message_id = $2 AND user_id = $3 AND emoji = $4',
                         [messageType, messageId, odego, emoji]
                     );
@@ -1266,6 +1287,21 @@ app.post('/api/messages/:messageType/:messageId/reactions', authenticateToken, a
         }
 
         const exists = await pool.query(
+            'SELECT id, emoji FROM message_reactions WHERE message_type = $1 AND message_id = $2 AND user_id = $3',
+            [messageType, messageId, req.user.id]
+        );
+        if (exists.rows[0] && exists.rows[0].emoji === emoji) {
+            return res.json({ toggled: false, reactions: await buildReactionPayload(messageType, messageId, req.user.id) });
+        }
+
+        if (exists.rows[0]) {
+            await pool.query('UPDATE message_reactions SET emoji = $1, created_at = CURRENT_TIMESTAMP WHERE id = $2', [emoji, exists.rows[0].id]);
+        } else {
+            await pool.query(
+                'INSERT INTO message_reactions (id, message_type, message_id, user_id, emoji) VALUES ($1, $2, $3, $4, $5)',
+                [uuidv4(), messageType, messageId, req.user.id, emoji]
+            );
+        }
             'SELECT id FROM message_reactions WHERE message_type = $1 AND message_id = $2 AND user_id = $3 AND emoji = $4',
             [messageType, messageId, req.user.id, emoji]
         );
@@ -1528,6 +1564,9 @@ function getClientHTML() {
         .reaction-add-btn { border: 1px dashed rgba(255,255,255,0.22); border-radius: 999px; background: transparent; color: var(--text-muted); width: 26px; height: 22px; cursor: pointer; }
         .reaction-add-btn:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.45); }
         .message-extra-actions { display: flex; align-items: center; gap: 8px; }
+        .emoji-picker { position: absolute; background: #1e1f22; border: 1px solid #2f3136; border-radius: 10px; width: 280px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 999; top: auto; }
+        .emoji-picker.for-input { right: 0; left: auto; bottom: calc(100% + 8px); top: auto; }
+        .emoji-picker.for-reaction { left: 0; right: auto; bottom: calc(100% + 6px); top: auto; }
         .emoji-picker { position: absolute; background: #1e1f22; border: 1px solid #2f3136; border-radius: 10px; width: 280px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 90; }
         .emoji-picker.for-input { right: 0; bottom: calc(100% + 8px); }
         .emoji-picker.for-reaction { left: 0; bottom: calc(100% + 6px); }
