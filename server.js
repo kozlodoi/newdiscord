@@ -302,6 +302,7 @@ async function handleVoiceJoin(odego, username, channelId, ws) {
     }
     
     const room = getVoiceRoom(channelId);
+    const userResult = await pool.query('SELECT avatar_url FROM users WHERE id = $1', [odego]);
     
     if (room.has(odego)) {
         console.log(`[VOICE] User ${username} already in channel ${channelId}, skipping`);
@@ -314,6 +315,7 @@ async function handleVoiceJoin(odego, username, channelId, ws) {
         odego: odego,
         visitorId: odego,
         username: username,
+        avatar_url: userResult.rows[0] ? userResult.rows[0].avatar_url : null,
         muted: false,
         deafened: false,
         streaming: false,
@@ -726,6 +728,50 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
         if (!result.rows[0]) return res.status(404).json({ error: 'Не найден' });
         res.json(result.rows[0]);
     } catch (e) {
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+app.put('/api/users/me/profile', authenticateToken, async (req, res) => {
+    try {
+        const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+        const avatarUrl = req.body.avatar_url;
+
+        if (!username || username.length < 3 || username.length > 32) {
+            return res.status(400).json({ error: 'Имя: 3-32 символа' });
+        }
+
+        let normalizedAvatar = null;
+        if (avatarUrl === null || avatarUrl === '') {
+            normalizedAvatar = null;
+        } else if (typeof avatarUrl === 'string') {
+            const isValidDataImage = /^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=\s]+$/i.test(avatarUrl);
+            if (!isValidDataImage) {
+                return res.status(400).json({ error: 'Аватар должен быть изображением в формате base64 data URL' });
+            }
+            if (avatarUrl.length > 2_000_000) {
+                return res.status(400).json({ error: 'Аватар слишком большой (максимум 2MB)' });
+            }
+            normalizedAvatar = avatarUrl;
+        } else {
+            return res.status(400).json({ error: 'Некорректный формат аватара' });
+        }
+
+        const existing = await pool.query('SELECT id FROM users WHERE username = $1 AND id != $2', [username, req.user.id]);
+        if (existing.rows.length > 0) {
+            return res.status(400).json({ error: 'Это имя уже занято' });
+        }
+
+        const updated = await pool.query(
+            'UPDATE users SET username = $1, avatar_url = $2 WHERE id = $3 RETURNING id, username, email, avatar_url, status, created_at',
+            [username, normalizedAvatar, req.user.id]
+        );
+
+        const token = jwt.sign({ id: updated.rows[0].id, username: updated.rows[0].username }, JWT_SECRET, { expiresIn: '7d' });
+
+        res.json({ user: updated.rows[0], token });
+    } catch (e) {
+        console.error(e);
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
@@ -1217,6 +1263,7 @@ function getClientHTML() {
         .voice-participant { display: flex; align-items: center; padding: 5px 8px 5px 32px; gap: 8px; font-size: 13px; color: var(--text-secondary); border: 1px solid transparent; border-radius: 8px; margin: 2px 4px; transition: all 0.2s ease; }
         .voice-participant:hover { border-color: rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); }
         .voice-participant .avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; transition: box-shadow 0.15s ease; position: relative; }
+        .avatar-image { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
         .voice-participant .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .voice-participant .status-icons { display: flex; gap: 4px; font-size: 12px; }
         .voice-participant.speaking .avatar { box-shadow: 0 0 0 2px var(--green); }
@@ -1343,6 +1390,9 @@ function getClientHTML() {
         .mic-test { margin-top: 8px; }
         .mic-level-bar { width: 100%; height: 20px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden; }
         .mic-level-fill { height: 100%; width: 0%; background: var(--green); transition: width 0.1s ease, background 0.2s ease; border-radius: 4px; }
+        .profile-editor { display: grid; gap: 12px; }
+        .profile-avatar-preview { width: 96px; height: 96px; border-radius: 50%; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; overflow: hidden; margin: 0 auto; }
+        .profile-help { font-size: 12px; color: var(--text-muted); }
         .ui-icon { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; color: currentColor; }
         .ui-icon svg { width: 100%; height: 100%; fill: currentColor; }
         ::-webkit-scrollbar { width: 11px; height: 11px; }
@@ -1453,6 +1503,10 @@ function getClientHTML() {
         return '<span class="ui-icon ' + (cls || '') + '"><svg viewBox="0 0 24 24" aria-hidden="true">' + (icons[name] || '') + '</svg></span>';
     }
     function getInitials(n) { return n ? n.substring(0, 2).toUpperCase() : '??'; }
+    function renderAvatarContent(name, avatarUrl) {
+        if (avatarUrl) return '<img class="avatar-image" src="' + escapeHtml(avatarUrl) + '" alt="avatar">';
+        return escapeHtml(getInitials(name));
+    }
     function formatTime(d) {
         var dt = new Date(d), now = new Date();
         var t = dt.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
@@ -2813,7 +2867,7 @@ function getClientHTML() {
                         else stateClass = 'connecting';
                     }
                     html += '<div class="voice-participant ' + (isSpeaking ? 'speaking' : '') + '" data-user-id="' + uid + '">';
-                    html += '<div class="avatar">' + getInitials(p.username) + '</div>';
+                    html += '<div class="avatar">' + renderAvatarContent(p.username, p.avatar_url) + '</div>';
                     html += '<span class="name">' + escapeHtml(p.username) + '</span>';
                     html += '<span class="status-icons">';
                     if (uid !== currentUser.id && stateClass) {
@@ -2880,7 +2934,7 @@ function getClientHTML() {
     function renderUserPanel() {
         var c = $('#userPanel'); if (!c) return;
         var isSpeaking = speakingUsers.has(currentUser.id) && !!currentVoiceChannel;
-        var html = '<div class="avatar ' + (isSpeaking ? 'speaking' : '') + '">' + getInitials(currentUser.username) + '</div>';
+        var html = '<div class="avatar ' + (isSpeaking ? 'speaking' : '') + '" id="openProfileBtn" title="Открыть профиль">' + renderAvatarContent(currentUser.username, currentUser.avatar_url) + '</div>';
         html += '<div class="info"><div class="username">' + escapeHtml(currentUser.username) + '</div>';
         html += '<div class="status">В сети</div></div>';
         html += '<div class="actions">';
@@ -2891,10 +2945,83 @@ function getClientHTML() {
         }
         html += '<button id="logoutBtn" title="Выйти">' + icon('logout') + '</button></div>';
         c.innerHTML = html;
+        $('#openProfileBtn').onclick = showProfileSettings;
         $('#audioSettingsBtn').onclick = showAudioSettings;
         if ($('#upMute')) $('#upMute').onclick = toggleMute;
         if ($('#upDeafen')) $('#upDeafen').onclick = toggleDeafen;
         $('#logoutBtn').onclick = logout;
+    }
+
+    function showProfileSettings() {
+        var initialAvatar = currentUser.avatar_url || '';
+        var nextAvatar = initialAvatar;
+        $('#modalContainer').innerHTML =
+            '<div class="modal-overlay" id="modalOverlay"><div class="modal" role="dialog" aria-modal="true">' +
+            '<div class="modal-header"><h2>Профиль пользователя</h2><button class="modal-close" id="modalCloseBtn">' + icon('close') + '</button></div>' +
+            '<div class="modal-body"><form id="profileForm" class="profile-editor">' +
+            '<div class="profile-avatar-preview" id="profileAvatarPreview">' + renderAvatarContent(currentUser.username, initialAvatar) + '</div>' +
+            '<div class="form-group"><label>Аватарка</label><input type="file" id="profileAvatarInput" accept="image/*"></div>' +
+            '<div class="form-group"><label>Никнейм</label><input type="text" id="profileUsernameInput" minlength="3" maxlength="32" value="' + escapeHtml(currentUser.username) + '" required></div>' +
+            '<label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="removeAvatarCheck"> Удалить аватар</label>' +
+            '<p class="profile-help">Поддерживаются png/jpg/webp/gif. Аватар хранится в базе данных.</p>' +
+            '</form></div>' +
+            '<div class="modal-actions"><button class="btn secondary" id="cancelBtn">Отмена</button><button class="btn" id="saveProfileBtn">Сохранить</button></div>' +
+            '</div></div>';
+
+        function refreshPreview(name) {
+            var preview = $('#profileAvatarPreview');
+            if (preview) preview.innerHTML = renderAvatarContent(name, nextAvatar);
+        }
+
+        $('#profileAvatarInput').onchange = function(e) {
+            var file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (file.size > 1024 * 1024) {
+                alert('Файл слишком большой (максимум 1MB)');
+                e.target.value = '';
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function(ev) {
+                nextAvatar = ev.target.result;
+                $('#removeAvatarCheck').checked = false;
+                refreshPreview($('#profileUsernameInput').value || currentUser.username);
+            };
+            reader.readAsDataURL(file);
+        };
+
+        $('#removeAvatarCheck').onchange = function(e) {
+            if (e.target.checked) nextAvatar = null;
+            else nextAvatar = initialAvatar;
+            refreshPreview($('#profileUsernameInput').value || currentUser.username);
+        };
+
+        $('#profileUsernameInput').oninput = function(e) { refreshPreview(e.target.value || currentUser.username); };
+
+        $('#saveProfileBtn').onclick = function() {
+            var username = ($('#profileUsernameInput').value || '').trim();
+            api('/api/users/me/profile', {
+                method: 'PUT',
+                body: JSON.stringify({ username: username, avatar_url: nextAvatar })
+            }).then(function(data) {
+                currentUser = data.user;
+                token = data.token;
+                localStorage.setItem('token', token);
+                closeModal();
+                render();
+                if (ws && ws.readyState === ws.OPEN) {
+                    ws.close();
+                } else {
+                    connectWebSocket();
+                }
+            }).catch(function(e) {
+                alert(e.message);
+            });
+        };
+
+        $('#modalOverlay').onclick = function(e) { if (e.target.id === 'modalOverlay') closeModal(); };
+        $('#cancelBtn').onclick = closeModal;
+        if ($('#modalCloseBtn')) $('#modalCloseBtn').onclick = closeModal;
     }
 
     function renderVoiceGrid() {
@@ -2908,7 +3035,7 @@ function getClientHTML() {
         if (isScreenSharing && screenStream) {
             html += '<video id="my-screen-video" autoplay muted playsinline></video>';
         } else {
-            html += '<div class="avatar">' + getInitials(currentUser.username) + '</div>';
+            html += '<div class="avatar">' + renderAvatarContent(currentUser.username, currentUser.avatar_url) + '</div>';
         }
         html += '<div class="username">' + escapeHtml(currentUser.username) + ' (Вы)</div>';
         html += '<div class="status-icons">';
@@ -2925,7 +3052,7 @@ function getClientHTML() {
             if (hasScreen) {
                 html += '<video id="screen-video-' + uid + '" autoplay playsinline></video>';
             } else {
-                html += '<div class="avatar">' + getInitials(p.username) + '</div>';
+                html += '<div class="avatar">' + renderAvatarContent(p.username, p.avatar_url) + '</div>';
             }
             html += '<div class="username">' + escapeHtml(p.username) + '</div>';
             html += '<div class="status-icons">';
@@ -2983,7 +3110,7 @@ function getClientHTML() {
         messages.forEach(function(m) {
             var un = m.username || m.sender_username;
             html += '<div class="message">';
-            html += '<div class="avatar">' + getInitials(un) + '</div>';
+            html += '<div class="avatar">' + renderAvatarContent(un, m.avatar_url || m.sender_avatar || m.recipient_avatar) + '</div>';
             html += '<div class="content">';
             html += '<div class="header"><span class="author">' + escapeHtml(un) + '</span>';
             html += '<span class="timestamp">' + formatTime(m.created_at) + '</span></div>';
@@ -3002,7 +3129,7 @@ function getClientHTML() {
         online.forEach(function(m) {
             var inVoice = getMemberVoiceChannel(m.id);
             html += '<div class="member-item" data-member-id="' + m.id + '">';
-            html += '<div class="avatar">' + getInitials(m.username) + '<div class="status-dot online"></div></div>';
+            html += '<div class="avatar">' + renderAvatarContent(m.username, m.avatar_url) + '<div class="status-dot online"></div></div>';
             html += '<span class="name">' + escapeHtml(m.username) + '</span>';
             if (inVoice) html += '<span class="voice-icon" title="В голосовом канале">' + icon('voice') + '</span>';
             html += '</div>';
@@ -3010,7 +3137,7 @@ function getClientHTML() {
         html += '<div class="members-category">НЕ В СЕТИ — ' + offline.length + '</div>';
         offline.forEach(function(m) {
             html += '<div class="member-item" data-member-id="' + m.id + '">';
-            html += '<div class="avatar">' + getInitials(m.username) + '<div class="status-dot offline"></div></div>';
+            html += '<div class="avatar">' + renderAvatarContent(m.username, m.avatar_url) + '<div class="status-dot offline"></div></div>';
             html += '<span class="name">' + escapeHtml(m.username) + '</span></div>';
         });
         c.innerHTML = html;
@@ -3050,7 +3177,7 @@ function getClientHTML() {
                 var html = '';
                 users.forEach(function(u) {
                     html += '<div class="dm-item" data-user-id="' + u.id + '">';
-                    html += '<div class="avatar">' + getInitials(u.username) + '</div>';
+                    html += '<div class="avatar">' + renderAvatarContent(u.username, u.avatar_url) + '</div>';
                     html += '<span class="name">' + escapeHtml(u.username) + '</span></div>';
                 });
                 list.innerHTML = html;
@@ -3068,7 +3195,7 @@ function getClientHTML() {
             var html = '';
             convs.forEach(function(c) {
                 html += '<div class="dm-item ' + (currentDM && currentDM.id === c.id ? 'active' : '') + '" data-dm-id="' + c.id + '" data-dm-name="' + escapeHtml(c.username) + '">';
-                html += '<div class="avatar">' + getInitials(c.username) + '</div>';
+                html += '<div class="avatar">' + renderAvatarContent(c.username, c.avatar_url) + '</div>';
                 html += '<span class="name">' + escapeHtml(c.username) + '</span></div>';
             });
             list.innerHTML = html;
