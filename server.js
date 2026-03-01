@@ -3026,6 +3026,18 @@ function getClientHTML() {
                 alert(err.message || 'Не удалось обработать изображение');
                 e.target.value = '';
             });
+            if (file.size > 1024 * 1024) {
+                alert('Файл слишком большой (максимум 1MB)');
+                e.target.value = '';
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function(ev) {
+                nextAvatar = ev.target.result;
+                $('#removeAvatarCheck').checked = false;
+                refreshPreview($('#profileUsernameInput').value || currentUser.username);
+            };
+            reader.readAsDataURL(file);
         };
 
         $('#removeAvatarCheck').onchange = function(e) {
