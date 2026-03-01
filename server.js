@@ -1146,9 +1146,9 @@ function getClientHTML() {
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --bg-primary: #313338;
-            --bg-secondary: #2b2d31;
-            --bg-tertiary: #1e1f22;
+            --bg-primary: #2b2d31;
+            --bg-secondary: #24262b;
+            --bg-tertiary: #1a1b1e;
             --bg-floating: #111214;
             --text-primary: #f2f3f5;
             --text-secondary: #b5bac1;
@@ -1159,7 +1159,7 @@ function getClientHTML() {
             --red: #f23f43;
             --yellow: #f0b232;
             --channel-text: #80848e;
-            --voice-connected: #1a6334;
+            --voice-connected: #194b31;
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -1169,15 +1169,16 @@ function getClientHTML() {
             overflow: hidden;
         }
         .auth-container { display: flex; align-items: center; justify-content: center; height: 100vh; background: var(--bg-tertiary); }
-        .auth-box { background: var(--bg-primary); padding: 32px; border-radius: 8px; width: 100%; max-width: 480px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .auth-box { background: var(--bg-primary); padding: 36px; border-radius: 14px; width: 100%; max-width: 500px; box-shadow: 0 18px 44px rgba(0,0,0,0.35); }
         .auth-box h1 { text-align: center; margin-bottom: 8px; font-size: 24px; }
         .auth-box p { text-align: center; color: var(--text-secondary); margin-bottom: 20px; }
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: none; border-radius: 4px; background: var(--bg-tertiary); color: var(--text-primary); font-size: 16px; }
+        .form-group input, .form-group select { width: 100%; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; background: var(--bg-tertiary); color: var(--text-primary); font-size: 16px; transition: all 0.2s ease; }
+        .form-group input:hover, .form-group select:hover { border-color: rgba(255,255,255,0.14); }
         .form-group input:focus, .form-group select:focus { outline: 2px solid var(--accent); }
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 4px; background: var(--accent); color: white; font-size: 16px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
-        .btn:hover { background: var(--accent-hover); }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: linear-gradient(180deg, #6774ff 0%, var(--accent) 100%); color: white; font-size: 16px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 6px 16px rgba(88,101,242,0.25); }
+        .btn:hover { background: linear-gradient(180deg, #7280ff 0%, var(--accent-hover) 100%); transform: translateY(-1px); }
         .btn:disabled { background: var(--bg-tertiary); cursor: not-allowed; }
         .btn.secondary { background: transparent; color: var(--text-primary); }
         .btn.secondary:hover { background: var(--bg-tertiary); }
@@ -1187,32 +1188,34 @@ function getClientHTML() {
         .auth-switch a { color: var(--accent); text-decoration: none; cursor: pointer; }
         .error-msg { background: rgba(242,63,67,0.1); border: 1px solid var(--red); color: var(--red); padding: 10px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; }
         .app-container { display: flex; height: 100vh; }
-        .server-list { width: 72px; background: var(--bg-tertiary); padding: 12px 0; display: flex; flex-direction: column; align-items: center; gap: 8px; overflow-y: auto; }
+        .server-list { width: 72px; background: var(--bg-tertiary); padding: 12px 0; display: flex; flex-direction: column; align-items: center; gap: 8px; overflow-y: auto; box-shadow: inset -1px 0 0 rgba(255,255,255,0.04); }
         .server-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 18px; color: var(--text-primary); flex-shrink: 0; position: relative; }
         .server-icon:hover, .server-icon.active { border-radius: 16px; background: var(--accent); }
         .server-icon.add { color: var(--green); font-size: 24px; }
         .server-icon.add:hover { background: var(--green); color: white; border-radius: 16px; }
         .separator { width: 32px; height: 2px; background: var(--bg-secondary); border-radius: 1px; margin: 4px 0; }
-        .channel-sidebar { width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; }
+        .channel-sidebar { width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; box-shadow: 2px 0 14px rgba(0,0,0,0.24); }
         .server-header { padding: 12px 16px; font-weight: 600; font-size: 16px; border-bottom: 1px solid var(--bg-tertiary); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         .server-header:hover { background: var(--bg-tertiary); }
         .channel-list { flex: 1; overflow-y: auto; padding: 8px 0; }
         .channel-category { padding: 16px 8px 4px 16px; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--channel-text); display: flex; justify-content: space-between; align-items: center; }
         .channel-category button { background: none; border: none; color: var(--channel-text); cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
         .channel-category button:hover { color: var(--text-primary); background: var(--bg-tertiary); }
-        .channel-item { display: flex; align-items: center; padding: 6px 8px; margin: 1px 8px; border-radius: 4px; cursor: pointer; color: var(--channel-text); gap: 6px; }
+        .channel-item { display: flex; align-items: center; padding: 7px 10px; margin: 2px 8px; border-radius: 8px; cursor: pointer; color: var(--channel-text); gap: 8px; position: relative; transition: all 0.2s ease; }
         .channel-item:hover { background: var(--bg-tertiary); color: var(--text-secondary); }
         .channel-item.active { background: var(--bg-tertiary); color: var(--text-primary); }
-        .channel-item .icon { font-size: 20px; width: 24px; text-align: center; }
+        .channel-item.active::before { content: ''; position: absolute; left: -8px; top: 6px; bottom: 6px; width: 3px; border-radius: 3px; background: var(--accent); }
+        .channel-item .icon { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; }
         .channel-item .name { flex: 1; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .channel-item .delete-btn { opacity: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 16px; }
         .channel-item:hover .delete-btn { opacity: 1; }
         .channel-item .delete-btn:hover { color: var(--red); background: rgba(242,63,67,0.1); }
-        .voice-channel { margin: 2px 8px; border-radius: 4px; }
+        .voice-channel { margin: 3px 8px; border-radius: 8px; }
         .voice-channel .channel-item { margin: 0; }
         .voice-channel.has-users .channel-item { border-radius: 4px 4px 0 0; background: var(--bg-tertiary); }
         .voice-participants { background: var(--bg-tertiary); border-radius: 0 0 4px 4px; padding: 4px 0; }
-        .voice-participant { display: flex; align-items: center; padding: 4px 8px 4px 32px; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+        .voice-participant { display: flex; align-items: center; padding: 5px 8px 5px 32px; gap: 8px; font-size: 13px; color: var(--text-secondary); border: 1px solid transparent; border-radius: 8px; margin: 2px 4px; transition: all 0.2s ease; }
+        .voice-participant:hover { border-color: rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); }
         .voice-participant .avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; transition: box-shadow 0.15s ease; position: relative; }
         .voice-participant .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .voice-participant .status-icons { display: flex; gap: 4px; font-size: 12px; }
@@ -1243,7 +1246,7 @@ function getClientHTML() {
         .voice-connected .voice-status .text .title.relay { color: var(--yellow); }
         .voice-connected .voice-status .text .channel { font-size: 12px; color: var(--text-secondary); }
         .voice-connected .voice-controls { display: flex; gap: 8px; flex-wrap: wrap; }
-        .voice-connected .voice-controls button { flex: 1; min-width: 40px; padding: 8px; border: none; border-radius: 4px; background: rgba(0,0,0,0.2); color: var(--text-primary); cursor: pointer; font-size: 14px; transition: all 0.2s; }
+        .voice-connected .voice-controls button { flex: 1; min-width: 44px; padding: 10px; border: none; border-radius: 8px; background: rgba(0,0,0,0.2); color: var(--text-primary); cursor: pointer; font-size: 14px; transition: all 0.2s ease; }
         .voice-connected .voice-controls button:hover { background: rgba(0,0,0,0.4); }
         .voice-connected .voice-controls button.active { color: var(--red); background: rgba(242,63,67,0.3); }
         .voice-connected .voice-controls .disconnect { background: rgba(242,63,67,0.3); color: var(--red); }
@@ -1255,21 +1258,27 @@ function getClientHTML() {
         .chat-header { padding: 12px 16px; border-bottom: 1px solid var(--bg-tertiary); display: flex; align-items: center; gap: 8px; font-weight: 600; flex-shrink: 0; }
         .chat-header .icon { color: var(--channel-text); }
         .messages-container { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
-        .message { display: flex; gap: 16px; }
+        .message { display: flex; gap: 16px; padding: 6px 16px; border-radius: 8px; transition: background 0.2s ease; }
+        .message:hover { background: rgba(255,255,255,0.02); }
         .message .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; }
         .message .content { flex: 1; min-width: 0; }
         .message .header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
         .message .author { font-weight: 500; color: var(--text-primary); }
-        .message .timestamp { font-size: 12px; color: var(--text-muted); }
+        .message .timestamp { font-size: 11px; color: #777d86; }
         .message .text { color: var(--text-secondary); word-wrap: break-word; line-height: 1.4; }
         .message-input-container { padding: 0 16px 24px; flex-shrink: 0; }
-        .message-input { display: flex; align-items: center; background: var(--bg-tertiary); border-radius: 8px; padding: 0 16px; }
+        .message-input { display: flex; align-items: center; background: #3a3d44; border-radius: 10px; padding: 0 12px; min-height: 44px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05); }
         .message-input input { flex: 1; background: none; border: none; padding: 12px 0; color: var(--text-primary); font-size: 16px; }
         .message-input input:focus { outline: none; }
         .message-input input::placeholder { color: var(--text-muted); }
-        .message-input button { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 8px; font-size: 18px; }
-        .message-input button:hover { color: var(--text-primary); }
-        .typing-indicator { font-size: 12px; color: var(--text-muted); padding: 4px 16px; min-height: 20px; }
+        .message-input button { background: rgba(88,101,242,0.15); border: none; color: var(--accent); cursor: pointer; padding: 10px; font-size: 18px; border-radius: 8px; width: 38px; height: 38px; transition: all 0.2s ease; }
+        .message-input button:hover { background: rgba(88,101,242,0.35); color: #fff; }
+        .typing-indicator { font-size: 12px; color: var(--text-muted); padding: 6px 16px; min-height: 24px; display: flex; align-items: center; gap: 6px; }
+        .typing-indicator .dots { display: inline-flex; gap: 4px; }
+        .typing-indicator .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); animation: typingBlink 1.2s infinite; }
+        .typing-indicator .dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingBlink { 0%, 80%, 100% { opacity: 0.2; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
         .members-sidebar { width: 240px; background: var(--bg-secondary); padding: 16px 8px; overflow-y: auto; }
         .members-category { padding: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--channel-text); }
         .member-item { display: flex; align-items: center; padding: 6px 8px; border-radius: 4px; cursor: pointer; gap: 12px; }
@@ -1280,11 +1289,15 @@ function getClientHTML() {
         .member-item .avatar .status-dot.offline { background: var(--text-muted); }
         .member-item .name { font-size: 15px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
         .member-item .voice-icon { font-size: 14px; color: var(--green); }
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal { background: var(--bg-primary); border-radius: 8px; width: 100%; max-width: 480px; max-height: 90vh; overflow: hidden; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.88); display: flex; align-items: center; justify-content: center; z-index: 1000; animation: modalFade 0.2s ease; }
+        .modal { background: var(--bg-primary); border-radius: 14px; width: 100%; max-width: 480px; max-height: 90vh; overflow: hidden; box-shadow: 0 22px 48px rgba(0,0,0,0.56); animation: modalPop 0.2s ease; }
+        @keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalPop { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .modal-header { padding: 16px; text-align: center; }
         .modal-header h2 { font-size: 20px; margin-bottom: 8px; }
         .modal-header p { color: var(--text-secondary); font-size: 14px; }
+        .modal-close { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border: none; border-radius: 8px; background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.2s ease; }
+        .modal-close:hover { background: var(--bg-tertiary); color: var(--text-primary); }
         .modal-body { padding: 0 16px 16px; max-height: 60vh; overflow-y: auto; }
         .modal-footer { padding: 16px; background: var(--bg-secondary); display: flex; justify-content: flex-end; gap: 8px; }
         .modal-footer .btn { width: auto; padding: 10px 24px; }
@@ -1304,7 +1317,7 @@ function getClientHTML() {
         .voice-grid-header .close-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 24px; padding: 4px 8px; border-radius: 4px; }
         .voice-grid-header .close-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
         .voice-grid-container { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; align-content: center; }
-        .voice-grid-item { width: 200px; height: 200px; background: var(--bg-tertiary); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; position: relative; cursor: pointer; transition: all 0.2s; }
+        .voice-grid-item { width: 200px; height: 200px; background: var(--bg-tertiary); border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; position: relative; cursor: pointer; transition: all 0.2s ease; }
         .voice-grid-item:hover { background: var(--bg-secondary); }
         .voice-grid-item.speaking { box-shadow: 0 0 0 3px var(--green); }
         .voice-grid-item.streaming { width: 400px; height: 300px; }
@@ -1314,7 +1327,7 @@ function getClientHTML() {
         .voice-grid-item .status-icons span { font-size: 16px; }
         .voice-grid-item video { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
         .voice-grid-item.focused { position: fixed; top: 60px; left: 80px; right: 8px; bottom: 8px; width: auto; height: auto; z-index: 200; }
-        .dm-sidebar { width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; }
+        .dm-sidebar { width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; box-shadow: 2px 0 14px rgba(0,0,0,0.24); }
         .dm-header { padding: 12px 16px; border-bottom: 1px solid var(--bg-tertiary); }
         .dm-search { width: 100%; padding: 8px; border: none; border-radius: 4px; background: var(--bg-tertiary); color: var(--text-primary); font-size: 14px; }
         .dm-list { flex: 1; overflow-y: auto; padding: 8px; }
@@ -1323,16 +1336,18 @@ function getClientHTML() {
         .dm-item .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
         .dm-item .name { flex: 1; font-size: 15px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); text-align: center; padding: 32px; }
-        .empty-state .icon { font-size: 64px; margin-bottom: 16px; opacity: 0.5; }
+        .empty-state .icon { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.65; color: var(--text-muted); }
         .empty-state h3 { margin-bottom: 8px; color: var(--text-primary); }
         .audio-select { width: 100%; padding: 10px; border: none; border-radius: 4px; background: var(--bg-tertiary); color: var(--text-primary); font-size: 14px; cursor: pointer; }
         .audio-select:focus { outline: 2px solid var(--accent); }
         .mic-test { margin-top: 8px; }
         .mic-level-bar { width: 100%; height: 20px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden; }
         .mic-level-fill { height: 100%; width: 0%; background: var(--green); transition: width 0.1s ease, background 0.2s ease; border-radius: 4px; }
-        ::-webkit-scrollbar { width: 8px; }
+        .ui-icon { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; color: currentColor; }
+        .ui-icon svg { width: 100%; height: 100%; fill: currentColor; }
+        ::-webkit-scrollbar { width: 11px; height: 11px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #3f424a; border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
         .debug-panel { position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.95); color: #0f0; padding: 10px; font-family: monospace; font-size: 10px; max-width: 400px; max-height: 300px; overflow-y: auto; border-radius: 4px; z-index: 9999; display: none; }
         .debug-panel.show { display: block; }
         .debug-panel .error { color: #f55; }
@@ -1416,6 +1431,27 @@ function getClientHTML() {
     function $(s) { return document.querySelector(s); }
     function $$(s) { return document.querySelectorAll(s); }
     function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+    function icon(name, cls) {
+        var icons = {
+            home: '<path d="M12 3l9 8h-3v10h-5v-6H11v6H6V11H3z"/>',
+            plus: '<path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"/>',
+            hash: '<path d="M9 3L7.8 8h4.2L13.2 3h2.1L14.1 8H19v2h-5.3l-1 5H17v2h-4.7L11 22H8.9l1.3-5H6l-1.3 5H2.6L3.9 17H0v-2h4.3l1-5H1V8h4.7L7 3zM8.2 10l-1 5h4.2l1-5z"/>',
+            voice: '<path d="M12 14a4 4 0 004-4V5a4 4 0 10-8 0v5a4 4 0 004 4zm-7-4h2a5 5 0 0010 0h2a7 7 0 01-6 6.92V20h3v2H8v-2h3v-3.08A7 7 0 015 10z"/>',
+            send: '<path d="M3 11.5L21 3l-5.7 18-3.6-6.9L3 11.5zm3.6.1l4.2 1.7 2.2 4.3 3.1-9.8-9.5 3.8z"/>',
+            close: '<path d="M18.3 5.7l-1.4-1.4L12 9.2 7.1 4.3 5.7 5.7 10.6 10.6 5.7 15.5l1.4 1.4 4.9-4.9 4.9 4.9 1.4-1.4-4.9-4.9z"/>',
+            at: '<path d="M12 4a8 8 0 100 16c1.7 0 3.2-.5 4.4-1.3l-1.1-1.6A5.9 5.9 0 0112 18a6 6 0 116-6v1.5a1.5 1.5 0 01-3 0V12a3 3 0 10-1.1 2.3A3.5 3.5 0 0019.5 13V12A7.5 7.5 0 0012 4zm0 6a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"/>',
+            settings: '<path d="M19.4 13a7.8 7.8 0 000-2l2-1.5-2-3.4-2.4 1a7.4 7.4 0 00-1.7-1l-.3-2.6h-4l-.3 2.6a7.4 7.4 0 00-1.7 1l-2.4-1-2 3.4 2 1.5a7.8 7.8 0 000 2l-2 1.5 2 3.4 2.4-1c.5.4 1.1.7 1.7 1l.3 2.6h4l.3-2.6c.6-.3 1.2-.6 1.7-1l2.4 1 2-3.4-2-1.5zM12 15a3 3 0 110-6 3 3 0 010 6z"/>',
+            logout: '<path d="M16 17l1.4-1.4L14.8 13H21v-2h-6.2l2.6-2.6L16 7l-5 5 5 5zM3 5h8V3H3a2 2 0 00-2 2v14a2 2 0 002 2h8v-2H3z"/>',
+            users: '<path d="M8 11a4 4 0 100-8 4 4 0 000 8zm8 2a3 3 0 100-6 3 3 0 000 6zM8 13c-3.3 0-6 1.8-6 4v3h12v-3c0-2.2-2.7-4-6-4zm8 1c-.9 0-1.8.1-2.6.4 1 .8 1.6 1.8 1.6 2.9V20h7v-2c0-2.2-2.7-4-6-4z"/>',
+            video: '<path d="M4 6h10a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2zm14 4l4-3v10l-4-3V10z"/>',
+            muted: '<path d="M3 10h3l4-4v12l-4-4H3v-4zm10.6-.6L16 12l-2.4 2.6 1.4 1.4L17.4 13l2.6 2.6 1.4-1.4-2.6-2.6 2.6-2.6-1.4-1.4-2.6 2.6-2.4-2.6z"/>',
+            deafen: '<path d="M12 3a4 4 0 00-4 4v5a4 4 0 108 0V7a4 4 0 00-4-4zm-7 7h2a5 5 0 0010 0h2a7 7 0 01-5 6.7V19h3v2H7v-2h3v-2.3A7 7 0 015 10zm14.3 8.3l-1.4 1.4-2.6-2.6-2.6 2.6-1.4-1.4 2.6-2.6-2.6-2.6 1.4-1.4 2.6 2.6 2.6-2.6 1.4 1.4-2.6 2.6 2.6 2.6z"/>',
+            unmute: '<path d="M3 10h3l4-4v12l-4-4H3v-4zm10-3l6 6m0-6l-6 6"/>',
+            message: '<path d="M4 4h16a2 2 0 012 2v9a2 2 0 01-2 2H8l-4 3v-3H4a2 2 0 01-2-2V6a2 2 0 012-2z"/>'
+        };
+        return '<span class="ui-icon ' + (cls || '') + '"><svg viewBox="0 0 24 24" aria-hidden="true">' + (icons[name] || '') + '</svg></span>';
+    }
     function getInitials(n) { return n ? n.substring(0, 2).toUpperCase() : '??'; }
     function formatTime(d) {
         var dt = new Date(d), now = new Date();
@@ -1641,7 +1677,11 @@ function getClientHTML() {
         var el = $('.typing-indicator'); if (!el) return;
         var k = currentChannel ? currentChannel.id : (currentDM ? currentDM.id : null);
         var t = typingUsers[k];
-        el.textContent = (t && t.username !== currentUser.username) ? t.username + ' печатает...' : '';
+        if (t && t.username !== currentUser.username) {
+            el.innerHTML = '<span>' + escapeHtml(t.username) + ' печатает</span><span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>';
+            return;
+        }
+        el.textContent = '';
     }
 
     function updateUserStatus(uid, status) {
@@ -2120,6 +2160,7 @@ function getClientHTML() {
         if (!currentVoiceChannel) { alert('Сначала подключитесь к голосовому каналу'); return; }
         $('#modalContainer').innerHTML =
             '<div class="modal-overlay" id="modalOverlay"><div class="modal">' +
+            '<button class="modal-close" id="modalCloseBtn">' + icon('close') + '</button>' +
             '<div class="modal-header"><h2>Демонстрация экрана</h2><p>Выберите настройки качества трансляции</p></div>' +
             '<div class="modal-body"><div class="screen-settings">' +
             '<div class="setting-group"><label>Разрешение</label><select id="screenResolution">' +
@@ -2137,6 +2178,7 @@ function getClientHTML() {
             '</div></div>';
         $('#modalOverlay').onclick = function(e) { if (e.target.id === 'modalOverlay') closeModal(); };
         $('#cancelScreenBtn').onclick = closeModal;
+        if ($('#modalCloseBtn')) $('#modalCloseBtn').onclick = closeModal;
         $('#startScreenBtn').onclick = startScreenShare;
     }
 
@@ -2699,12 +2741,12 @@ function getClientHTML() {
 
     function renderServerList() {
         var c = $('#serverList'); if (!c) return;
-        var html = '<div class="server-icon home ' + (!currentServer ? 'active' : '') + '" id="homeBtn" title="Личные сообщения">🏠</div>';
+        var html = '<div class="server-icon home ' + (!currentServer ? 'active' : '') + '" id="homeBtn" title="Личные сообщения">' + icon('home') + '</div>';
         html += '<div class="separator"></div>';
         servers.forEach(function(s) {
             html += '<div class="server-icon ' + (currentServer && currentServer.id === s.id ? 'active' : '') + '" data-server-id="' + s.id + '" title="' + escapeHtml(s.name) + '">' + getInitials(s.name) + '</div>';
         });
-        html += '<div class="server-icon add" id="addServerBtn" title="Добавить сервер">+</div>';
+        html += '<div class="server-icon add" id="addServerBtn" title="Добавить сервер">' + icon('plus') + '</div>';
         c.innerHTML = html;
         $('#homeBtn').onclick = selectHome;
         $('#addServerBtn').onclick = showCreateServerModal;
@@ -2716,7 +2758,7 @@ function getClientHTML() {
     function renderChannelSidebar() {
         var c = $('#channelSidebar'); if (!c || !currentServer) return;
         c.innerHTML =
-            '<div class="server-header" id="serverHeader">' + escapeHtml(currentServer.name) + '<span>⌄</span></div>' +
+            '<div class="server-header" id="serverHeader">' + escapeHtml(currentServer.name) + '<span>▾</span></div>' +
             '<div class="channel-list" id="channelList"></div>' +
             '<div id="voiceConnectedPanel"></div>' +
             '<div class="user-panel" id="userPanel"></div>';
@@ -2733,19 +2775,19 @@ function getClientHTML() {
         var voiceCh = channels.filter(function(ch) { return ch.type === 'voice'; });
 
         var html = '<div class="channel-category"><span>ТЕКСТОВЫЕ КАНАЛЫ</span>';
-        if (currentServer.owner_id === currentUser.id) html += '<button id="addTextChannel" title="Создать канал">+</button>';
+        if (currentServer.owner_id === currentUser.id) html += '<button id="addTextChannel" title="Создать канал">' + icon('plus') + '</button>';
         html += '</div>';
         textCh.forEach(function(ch) {
             html += '<div class="channel-item ' + (currentChannel && currentChannel.id === ch.id ? 'active' : '') + '" data-channel-id="' + ch.id + '">';
-            html += '<span class="icon">#</span><span class="name">' + escapeHtml(ch.name) + '</span>';
+            html += '<span class="icon">' + icon('hash') + '</span><span class="name">' + escapeHtml(ch.name) + '</span>';
             if (currentServer.owner_id === currentUser.id && textCh.length > 1) {
-                html += '<button class="delete-btn" data-delete-channel="' + ch.id + '" title="Удалить">×</button>';
+                html += '<button class="delete-btn" data-delete-channel="' + ch.id + '" title="Удалить">' + icon('close') + '</button>';
             }
             html += '</div>';
         });
 
         html += '<div class="channel-category"><span>ГОЛОСОВЫЕ КАНАЛЫ</span>';
-        if (currentServer.owner_id === currentUser.id) html += '<button id="addVoiceChannel" title="Создать канал">+</button>';
+        if (currentServer.owner_id === currentUser.id) html += '<button id="addVoiceChannel" title="Создать канал">' + icon('plus') + '</button>';
         html += '</div>';
         voiceCh.forEach(function(ch) {
             var parts = ch.voiceParticipants || [];
@@ -2753,9 +2795,9 @@ function getClientHTML() {
             var isConn = currentVoiceChannel && currentVoiceChannel.id === ch.id;
             html += '<div class="voice-channel ' + (hasUsers ? 'has-users' : '') + '">';
             html += '<div class="channel-item ' + (isConn ? 'active' : '') + '" data-voice-channel-id="' + ch.id + '">';
-            html += '<span class="icon">🔊</span><span class="name">' + escapeHtml(ch.name) + '</span>';
+            html += '<span class="icon">' + icon('voice') + '</span><span class="name">' + escapeHtml(ch.name) + '</span>';
             if (currentServer.owner_id === currentUser.id && voiceCh.length > 1) {
-                html += '<button class="delete-btn" data-delete-channel="' + ch.id + '" title="Удалить">×</button>';
+                html += '<button class="delete-btn" data-delete-channel="' + ch.id + '" title="Удалить">' + icon('close') + '</button>';
             }
             html += '</div>';
             if (hasUsers) {
@@ -2778,9 +2820,9 @@ function getClientHTML() {
                         html += '<span class="conn-status ' + stateClass + '">' +
                             (stateClass === 'connected' ? '✓' : stateClass === 'failed' ? '✗' : '...') + '</span>';
                     }
-                    if (p.streaming) html += '<span class="stream-icon" title="Стримит">📺</span>';
-                    if (p.muted) html += '<span class="mute-icon" title="Замьючен">🔇</span>';
-                    if (p.deafened) html += '<span class="deafen-icon" title="Оглушён">🔕</span>';
+                    if (p.streaming) html += '<span class="stream-icon" title="Стримит">' + icon('users') + '</span>';
+                    if (p.muted) html += '<span class="mute-icon" title="Замьючен">' + icon('close') + '</span>';
+                    if (p.deafened) html += '<span class="deafen-icon" title="Оглушён">' + icon('deafen') + '</span>';
                     html += '</span></div>';
                 });
                 html += '</div>';
@@ -2821,11 +2863,11 @@ function getClientHTML() {
         html += '<div class="channel">' + escapeHtml(currentVoiceChannel.name) + '</div>';
         html += '</div></div>';
         html += '<div class="voice-controls">';
-        html += '<button id="vcMute" class="' + (isMuted ? 'active' : '') + '" title="' + (isMuted ? 'Включить микрофон' : 'Выключить микрофон') + '">' + (isMuted ? '🔇' : '🎤') + '</button>';
-        html += '<button id="vcDeafen" class="' + (isDeafened ? 'active' : '') + '" title="' + (isDeafened ? 'Включить звук' : 'Выключить звук') + '">' + (isDeafened ? '🔕' : '🔔') + '</button>';
-        html += '<button id="vcScreen" class="screen-share ' + (isScreenSharing ? 'active' : '') + '" title="Демонстрация экрана">📺</button>';
-        html += '<button id="vcGrid" title="Показать участников">👥</button>';
-        html += '<button id="vcDisconnect" class="disconnect" title="Отключиться">📞</button>';
+        html += '<button id="vcMute" class="' + (isMuted ? 'active' : '') + '" title="' + (isMuted ? 'Включить микрофон' : 'Выключить микрофон') + '">' + icon('voice') + '</button>';
+        html += '<button id="vcDeafen" class="' + (isDeafened ? 'active' : '') + '" title="' + (isDeafened ? 'Включить звук' : 'Выключить звук') + '">' + icon('deafen') + '</button>';
+        html += '<button id="vcScreen" class="screen-share ' + (isScreenSharing ? 'active' : '') + '" title="Демонстрация экрана">' + icon('users') + '</button>';
+        html += '<button id="vcGrid" title="Показать участников">' + icon('users') + '</button>';
+        html += '<button id="vcDisconnect" class="disconnect" title="Отключиться">' + icon('close') + '</button>';
         html += '</div></div>';
         c.innerHTML = html;
         $('#vcMute').onclick = toggleMute;
@@ -2842,12 +2884,12 @@ function getClientHTML() {
         html += '<div class="info"><div class="username">' + escapeHtml(currentUser.username) + '</div>';
         html += '<div class="status">В сети</div></div>';
         html += '<div class="actions">';
-        html += '<button id="audioSettingsBtn" title="Настройки звука">⚙️</button>';
+        html += '<button id="audioSettingsBtn" title="Настройки звука">' + icon('settings') + '</button>';
         if (currentVoiceChannel) {
-            html += '<button id="upMute" class="' + (isMuted ? 'muted' : '') + '" title="Микрофон">' + (isMuted ? '🔇' : '🎤') + '</button>';
-            html += '<button id="upDeafen" class="' + (isDeafened ? 'muted' : '') + '" title="Звук">' + (isDeafened ? '🔕' : '🎧') + '</button>';
+            html += '<button id="upMute" class="' + (isMuted ? 'muted' : '') + '" title="Микрофон">' + icon('voice') + '</button>';
+            html += '<button id="upDeafen" class="' + (isDeafened ? 'muted' : '') + '" title="Звук">' + icon('deafen') + '</button>';
         }
-        html += '<button id="logoutBtn" title="Выйти">🚪</button></div>';
+        html += '<button id="logoutBtn" title="Выйти">' + icon('logout') + '</button></div>';
         c.innerHTML = html;
         $('#audioSettingsBtn').onclick = showAudioSettings;
         if ($('#upMute')) $('#upMute').onclick = toggleMute;
@@ -2859,7 +2901,7 @@ function getClientHTML() {
         var c = $('#voiceGridOverlay'); if (!c || !currentVoiceChannel) return;
         var html = '<div class="voice-grid-header">';
         html += '<h3>' + escapeHtml(currentVoiceChannel.name) + ' — ' + (voiceParticipants.size + 1) + ' участников</h3>';
-        html += '<button class="close-btn" id="closeVoiceGrid">×</button></div>';
+        html += '<button class="close-btn" id="closeVoiceGrid">' + icon('close') + '</button></div>';
         html += '<div class="voice-grid-container">';
         var mySpeaking = speakingUsers.has(currentUser.id);
         html += '<div class="voice-grid-item ' + (mySpeaking ? 'speaking' : '') + (isScreenSharing ? ' streaming' : '') + '" data-user-id="' + currentUser.id + '">';
@@ -2870,9 +2912,9 @@ function getClientHTML() {
         }
         html += '<div class="username">' + escapeHtml(currentUser.username) + ' (Вы)</div>';
         html += '<div class="status-icons">';
-        if (isScreenSharing) html += '<span title="Стримит">📺</span>';
-        if (isMuted) html += '<span title="Замьючен">🔇</span>';
-        if (isDeafened) html += '<span title="Оглушён">🔕</span>';
+        if (isScreenSharing) html += '<span title="Стримит">' + icon('video') + '</span>';
+        if (isMuted) html += '<span title="Замьючен">' + icon('muted') + '</span>';
+        if (isDeafened) html += '<span title="Оглушён">' + icon('deafen') + '</span>';
         html += '</div></div>';
         voiceParticipants.forEach(function(p, uid) {
             var isSpeaking = speakingUsers.has(uid);
@@ -2887,9 +2929,9 @@ function getClientHTML() {
             }
             html += '<div class="username">' + escapeHtml(p.username) + '</div>';
             html += '<div class="status-icons">';
-            if (p.streaming) html += '<span title="Стримит">📺</span>';
-            if (p.muted) html += '<span title="Замьючен">🔇</span>';
-            if (p.deafened) html += '<span title="Оглушён">🔕</span>';
+            if (p.streaming) html += '<span title="Стримит">' + icon('video') + '</span>';
+            if (p.muted) html += '<span title="Замьючен">' + icon('muted') + '</span>';
+            if (p.deafened) html += '<span title="Оглушён">' + icon('deafen') + '</span>';
             html += '</div></div>';
         });
         html += '</div>';
@@ -2917,16 +2959,16 @@ function getClientHTML() {
     function renderChatArea() {
         var c = $('#chatArea'); if (!c) return;
         if (!currentChannel) {
-            c.innerHTML = '<div class="empty-state"><div class="icon">💬</div><h3>Выберите канал</h3><p>Выберите текстовый канал для общения</p></div>';
+            c.innerHTML = '<div class="empty-state"><div class="icon">' + icon('message') + '</div><h3>Выберите канал</h3><p>Выберите текстовый канал для общения</p></div>';
             return;
         }
         c.innerHTML =
-            '<div class="chat-header"><span class="icon">#</span><span>' + escapeHtml(currentChannel.name) + '</span></div>' +
+            '<div class="chat-header"><span class="icon">' + icon('hash') + '</span><span>' + escapeHtml(currentChannel.name) + '</span></div>' +
             '<div class="messages-container" id="messagesContainer"></div>' +
             '<div class="typing-indicator"></div>' +
             '<div class="message-input-container"><div class="message-input">' +
             '<input type="text" id="messageInput" placeholder="Написать в #' + escapeHtml(currentChannel.name) + '" maxlength="2000">' +
-            '<button id="sendBtn">➤</button></div></div>';
+            '<button id="sendBtn">' + icon('send') + '</button></div></div>';
         renderMessages();
         setupMessageInput();
     }
@@ -2934,7 +2976,7 @@ function getClientHTML() {
     function renderMessages() {
         var c = $('#messagesContainer'); if (!c) return;
         if (!messages.length) {
-            c.innerHTML = '<div class="empty-state"><div class="icon">👋</div><h3>Начните общение!</h3><p>Отправьте первое сообщение</p></div>';
+            c.innerHTML = '<div class="empty-state"><div class="icon">' + icon('message') + '</div><h3>Начните общение!</h3><p>Отправьте первое сообщение</p></div>';
             return;
         }
         var html = '';
@@ -2962,7 +3004,7 @@ function getClientHTML() {
             html += '<div class="member-item" data-member-id="' + m.id + '">';
             html += '<div class="avatar">' + getInitials(m.username) + '<div class="status-dot online"></div></div>';
             html += '<span class="name">' + escapeHtml(m.username) + '</span>';
-            if (inVoice) html += '<span class="voice-icon" title="В голосовом канале">🔊</span>';
+            if (inVoice) html += '<span class="voice-icon" title="В голосовом канале">' + icon('voice') + '</span>';
             html += '</div>';
         });
         html += '<div class="members-category">НЕ В СЕТИ — ' + offline.length + '</div>';
@@ -3039,16 +3081,16 @@ function getClientHTML() {
     function renderDMChatArea() {
         var c = $('#chatArea'); if (!c) return;
         if (!currentDM) {
-            c.innerHTML = '<div class="empty-state"><div class="icon">💬</div><h3>Личные сообщения</h3><p>Выберите беседу или найдите пользователя</p></div>';
+            c.innerHTML = '<div class="empty-state"><div class="icon">' + icon('message') + '</div><h3>Личные сообщения</h3><p>Выберите беседу или найдите пользователя</p></div>';
             return;
         }
         c.innerHTML =
-            '<div class="chat-header"><span class="icon">@</span><span>' + escapeHtml(currentDM.username) + '</span></div>' +
+            '<div class="chat-header"><span class="icon">' + icon('at') + '</span><span>' + escapeHtml(currentDM.username) + '</span></div>' +
             '<div class="messages-container" id="messagesContainer"></div>' +
             '<div class="typing-indicator"></div>' +
             '<div class="message-input-container"><div class="message-input">' +
             '<input type="text" id="messageInput" placeholder="Написать @' + escapeHtml(currentDM.username) + '" maxlength="2000">' +
-            '<button id="sendDMBtn">➤</button></div></div>';
+            '<button id="sendDMBtn">' + icon('send') + '</button></div></div>';
         renderMessages();
         setupDMInput();
     }
@@ -3060,6 +3102,7 @@ function getClientHTML() {
     function showCreateServerModal() {
         $('#modalContainer').innerHTML =
             '<div class="modal-overlay" id="modalOverlay"><div class="modal">' +
+            '<button class="modal-close" id="modalCloseBtn">' + icon('close') + '</button>' +
             '<div class="modal-header"><h2>Создать или присоединиться</h2></div>' +
             '<div class="modal-tabs"><button class="active" id="createTab">Создать</button><button id="joinTab">Присоединиться</button></div>' +
             '<div class="modal-body" id="modalBody"><div class="form-group"><label>Название сервера</label><input type="text" id="serverName" maxlength="100" placeholder="Мой сервер"></div></div>' +
@@ -3067,6 +3110,7 @@ function getClientHTML() {
             '</div></div>';
         $('#modalOverlay').onclick = function(e) { if (e.target.id === 'modalOverlay') closeModal(); };
         $('#cancelBtn').onclick = closeModal;
+        if ($('#modalCloseBtn')) $('#modalCloseBtn').onclick = closeModal;
         $('#createTab').onclick = function() {
             $$('.modal-tabs button').forEach(function(b) { b.classList.remove('active'); });
             $('#createTab').classList.add('active');
@@ -3087,12 +3131,14 @@ function getClientHTML() {
     function showCreateChannelModal(type) {
         $('#modalContainer').innerHTML =
             '<div class="modal-overlay" id="modalOverlay"><div class="modal">' +
+            '<button class="modal-close" id="modalCloseBtn">' + icon('close') + '</button>' +
             '<div class="modal-header"><h2>Создать ' + (type === 'voice' ? 'голосовой' : 'текстовый') + ' канал</h2></div>' +
             '<div class="modal-body"><div class="form-group"><label>Название канала</label><input type="text" id="channelName" maxlength="100" placeholder="' + (type === 'voice' ? 'Голосовой чат' : 'общий') + '"></div></div>' +
             '<div class="modal-footer"><button class="btn secondary" id="cancelBtn">Отмена</button><button class="btn" id="createChannelBtn">Создать</button></div>' +
             '</div></div>';
         $('#modalOverlay').onclick = function(e) { if (e.target.id === 'modalOverlay') closeModal(); };
         $('#cancelBtn').onclick = closeModal;
+        if ($('#modalCloseBtn')) $('#modalCloseBtn').onclick = closeModal;
         $('#createChannelBtn').onclick = function() { createChannel(type); };
     }
 
@@ -3104,14 +3150,21 @@ function getClientHTML() {
             : '<button class="btn danger" id="leaveServerBtn">Покинуть сервер</button>';
         $('#modalContainer').innerHTML =
             '<div class="modal-overlay" id="modalOverlay"><div class="modal">' +
+            '<button class="modal-close" id="modalCloseBtn">' + icon('close') + '</button>' +
             '<div class="modal-header"><h2>' + escapeHtml(currentServer.name) + '</h2></div>' +
-            '<div class="modal-body"><div class="form-group"><label>Код приглашения</label><div class="invite-code" id="inviteCodeDisplay">Загрузка...</div><p style="font-size:12px;color:var(--text-muted);margin-top:8px;">Поделитесь этим кодом с друзьями</p></div></div>' +
+            '<div class="modal-body"><div class="form-group"><label>Код приглашения</label><div class="invite-code" id="inviteCodeDisplay">Загрузка...</div><button class="btn secondary" id="copyInviteBtn" style="margin-top:8px;">Копировать код</button><p style="font-size:12px;color:var(--text-muted);margin-top:8px;">Поделитесь этим кодом с друзьями</p></div></div>' +
             '<div class="modal-footer">' + footer + '<button class="btn secondary" id="closeBtn">Закрыть</button></div>' +
             '</div></div>';
         $('#modalOverlay').onclick = function(e) { if (e.target.id === 'modalOverlay') closeModal(); };
         $('#closeBtn').onclick = closeModal;
+        if ($('#modalCloseBtn')) $('#modalCloseBtn').onclick = closeModal;
         if ($('#deleteServerBtn')) $('#deleteServerBtn').onclick = deleteServer;
         if ($('#leaveServerBtn')) $('#leaveServerBtn').onclick = leaveServer;
+        if ($('#copyInviteBtn')) $('#copyInviteBtn').onclick = function() {
+            var code = ($('#inviteCodeDisplay') || {}).textContent;
+            if (!code || code === 'Загрузка...') return;
+            navigator.clipboard.writeText(code).then(function() { $('#copyInviteBtn').textContent = 'Скопировано'; setTimeout(function(){ if ($('#copyInviteBtn')) $('#copyInviteBtn').textContent = 'Копировать код'; }, 1200); });
+        };
         api('/api/servers/' + currentServer.id + '/invite').then(function(d) {
             var el = $('#inviteCodeDisplay');
             if (el) el.textContent = d.invite_code;
