@@ -184,8 +184,6 @@ async function initializeDatabase() {
             DELETE FROM message_reactions
             WHERE id IN (SELECT id FROM ranked WHERE rn > 1);
             ALTER TABLE message_reactions ADD CONSTRAINT message_reactions_message_type_message_id_user_id_key UNIQUE (message_type, message_id, user_id);
-                UNIQUE(message_type, message_id, user_id, emoji)
-            );
             CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id);
             CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_reactions_message ON message_reactions(message_type, message_id);
