@@ -57,7 +57,7 @@ const app = express();
 const server = http.createServer(app);
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 
 // ============================================
 // POSTGRESQL
@@ -1137,6 +1137,15 @@ app.get('/api/users/:odego', authenticateToken, async (req, res) => {
 
 app.get('/api/ice-config', authenticateToken, (req, res) => {
     res.json({ iceServers: ICE_SERVERS });
+});
+
+
+
+app.use((err, req, res, next) => {
+    if (err && (err.type === 'entity.too.large' || err.status === 413)) {
+        return res.status(413).json({ error: 'Файл аватара слишком большой. Попробуйте изображение меньшего размера.' });
+    }
+    return next(err);
 });
 
 // ============================================
@@ -2952,6 +2961,39 @@ function getClientHTML() {
         $('#logoutBtn').onclick = logout;
     }
 
+    function fileToOptimizedDataUrl(file) {
+        var MAX_DIMENSION = 512;
+        var JPEG_QUALITY = 0.82;
+        return new Promise(function(resolve, reject) {
+            var reader = new FileReader();
+            reader.onerror = function() { reject(new Error('Не удалось прочитать файл')); };
+            reader.onload = function(ev) {
+                var img = new Image();
+                img.onerror = function() { reject(new Error('Файл не является корректным изображением')); };
+                img.onload = function() {
+                    var w = img.width;
+                    var h = img.height;
+                    if (!w || !h) return reject(new Error('Некорректный размер изображения'));
+                    if (w > MAX_DIMENSION || h > MAX_DIMENSION) {
+                        var ratio = Math.min(MAX_DIMENSION / w, MAX_DIMENSION / h);
+                        w = Math.max(1, Math.round(w * ratio));
+                        h = Math.max(1, Math.round(h * ratio));
+                    }
+                    var canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    var ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    var mime = /image\/(png|webp)/i.test(file.type) ? file.type : 'image/jpeg';
+                    var dataUrl = canvas.toDataURL(mime, JPEG_QUALITY);
+                    resolve(dataUrl);
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
     function showProfileSettings() {
         var initialAvatar = currentUser.avatar_url || '';
         var nextAvatar = initialAvatar;
@@ -2976,6 +3018,14 @@ function getClientHTML() {
         $('#profileAvatarInput').onchange = function(e) {
             var file = e.target.files && e.target.files[0];
             if (!file) return;
+            fileToOptimizedDataUrl(file).then(function(dataUrl) {
+                nextAvatar = dataUrl;
+                $('#removeAvatarCheck').checked = false;
+                refreshPreview($('#profileUsernameInput').value || currentUser.username);
+            }).catch(function(err) {
+                alert(err.message || 'Не удалось обработать изображение');
+                e.target.value = '';
+            });
             if (file.size > 1024 * 1024) {
                 alert('Файл слишком большой (максимум 1MB)');
                 e.target.value = '';
