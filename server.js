@@ -1168,8 +1168,6 @@ function getClientHTML() {
             height: 100vh;
             overflow: hidden;
         }
-        
-        /* Auth styles */
         .auth-container { display: flex; align-items: center; justify-content: center; height: 100vh; background: var(--bg-tertiary); }
         .auth-box { background: var(--bg-primary); padding: 32px; border-radius: 8px; width: 100%; max-width: 480px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
         .auth-box h1 { text-align: center; margin-bottom: 8px; font-size: 24px; }
@@ -1188,19 +1186,13 @@ function getClientHTML() {
         .auth-switch { text-align: center; margin-top: 16px; color: var(--text-secondary); font-size: 14px; }
         .auth-switch a { color: var(--accent); text-decoration: none; cursor: pointer; }
         .error-msg { background: rgba(242,63,67,0.1); border: 1px solid var(--red); color: var(--red); padding: 10px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; }
-        
-        /* App layout */
         .app-container { display: flex; height: 100vh; }
-        
-        /* Server list */
         .server-list { width: 72px; background: var(--bg-tertiary); padding: 12px 0; display: flex; flex-direction: column; align-items: center; gap: 8px; overflow-y: auto; }
         .server-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 18px; color: var(--text-primary); flex-shrink: 0; position: relative; }
         .server-icon:hover, .server-icon.active { border-radius: 16px; background: var(--accent); }
         .server-icon.add { color: var(--green); font-size: 24px; }
         .server-icon.add:hover { background: var(--green); color: white; border-radius: 16px; }
         .separator { width: 32px; height: 2px; background: var(--bg-secondary); border-radius: 1px; margin: 4px 0; }
-        
-        /* Channel sidebar */
         .channel-sidebar { width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; }
         .server-header { padding: 12px 16px; font-weight: 600; font-size: 16px; border-bottom: 1px solid var(--bg-tertiary); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         .server-header:hover { background: var(--bg-tertiary); }
@@ -1216,8 +1208,6 @@ function getClientHTML() {
         .channel-item .delete-btn { opacity: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 16px; }
         .channel-item:hover .delete-btn { opacity: 1; }
         .channel-item .delete-btn:hover { color: var(--red); background: rgba(242,63,67,0.1); }
-        
-        /* Voice channel */
         .voice-channel { margin: 2px 8px; border-radius: 4px; }
         .voice-channel .channel-item { margin: 0; }
         .voice-channel.has-users .channel-item { border-radius: 4px 4px 0 0; background: var(--bg-tertiary); }
@@ -1233,8 +1223,6 @@ function getClientHTML() {
         .voice-participant .conn-status.connected { background: var(--green); color: white; }
         .voice-participant .conn-status.connecting { background: var(--yellow); color: black; }
         .voice-participant .conn-status.failed { background: var(--red); color: white; }
-        
-        /* User panel */
         .user-panel { padding: 8px; background: var(--bg-tertiary); display: flex; align-items: center; gap: 8px; }
         .user-panel .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; transition: box-shadow 0.15s ease; }
         .user-panel .avatar.speaking { box-shadow: 0 0 0 3px var(--green); }
@@ -1245,8 +1233,6 @@ function getClientHTML() {
         .user-panel .actions button { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 6px; border-radius: 4px; font-size: 16px; }
         .user-panel .actions button:hover { background: var(--bg-secondary); color: var(--text-primary); }
         .user-panel .actions button.muted { color: var(--red); }
-        
-        /* Voice connected panel */
         .voice-connected { background: var(--voice-connected); border-bottom: 1px solid var(--bg-primary); padding: 8px; }
         .voice-connected .voice-status { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
         .voice-connected .voice-status .indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
@@ -1265,8 +1251,6 @@ function getClientHTML() {
         .voice-connected .voice-controls .screen-share { background: rgba(88,101,242,0.3); color: var(--accent); }
         .voice-connected .voice-controls .screen-share:hover { background: var(--accent); color: white; }
         .voice-connected .voice-controls .screen-share.active { background: var(--accent); color: white; }
-        
-        /* Chat area */
         .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-primary); min-width: 0; }
         .chat-header { padding: 12px 16px; border-bottom: 1px solid var(--bg-tertiary); display: flex; align-items: center; gap: 8px; font-weight: 600; flex-shrink: 0; }
         .chat-header .icon { color: var(--channel-text); }
@@ -1286,8 +1270,6 @@ function getClientHTML() {
         .message-input button { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 8px; font-size: 18px; }
         .message-input button:hover { color: var(--text-primary); }
         .typing-indicator { font-size: 12px; color: var(--text-muted); padding: 4px 16px; min-height: 20px; }
-        
-        /* Members sidebar */
         .members-sidebar { width: 240px; background: var(--bg-secondary); padding: 16px 8px; overflow-y: auto; }
         .members-category { padding: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--channel-text); }
         .member-item { display: flex; align-items: center; padding: 6px 8px; border-radius: 4px; cursor: pointer; gap: 12px; }
@@ -1298,8 +1280,6 @@ function getClientHTML() {
         .member-item .avatar .status-dot.offline { background: var(--text-muted); }
         .member-item .name { font-size: 15px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
         .member-item .voice-icon { font-size: 14px; color: var(--green); }
-        
-        /* Modal */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .modal { background: var(--bg-primary); border-radius: 8px; width: 100%; max-width: 480px; max-height: 90vh; overflow: hidden; }
         .modal-header { padding: 16px; text-align: center; }
@@ -1314,14 +1294,10 @@ function getClientHTML() {
         .modal-tabs button:last-child { border-radius: 0 4px 4px 0; }
         .modal-tabs button.active { background: var(--accent); color: white; }
         .invite-code { background: var(--bg-tertiary); padding: 12px; border-radius: 4px; font-family: monospace; font-size: 18px; text-align: center; margin: 16px 0; user-select: all; }
-        
-        /* Screen share settings */
         .screen-settings { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
         .screen-settings .setting-group { display: flex; flex-direction: column; gap: 4px; }
         .screen-settings label { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); }
         .screen-settings select { padding: 8px; border: none; border-radius: 4px; background: var(--bg-tertiary); color: var(--text-primary); font-size: 14px; }
-        
-        /* Voice grid view */
         .voice-grid-overlay { position: fixed; top: 0; left: 72px; right: 0; bottom: 0; background: var(--bg-floating); z-index: 100; display: flex; flex-direction: column; }
         .voice-grid-header { padding: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--bg-tertiary); }
         .voice-grid-header h3 { font-size: 16px; }
@@ -1338,8 +1314,6 @@ function getClientHTML() {
         .voice-grid-item .status-icons span { font-size: 16px; }
         .voice-grid-item video { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
         .voice-grid-item.focused { position: fixed; top: 60px; left: 80px; right: 8px; bottom: 8px; width: auto; height: auto; z-index: 200; }
-        
-        /* DM sidebar */
         .dm-sidebar { width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; }
         .dm-header { padding: 12px 16px; border-bottom: 1px solid var(--bg-tertiary); }
         .dm-search { width: 100%; padding: 8px; border: none; border-radius: 4px; background: var(--bg-tertiary); color: var(--text-primary); font-size: 14px; }
@@ -1348,32 +1322,22 @@ function getClientHTML() {
         .dm-item:hover, .dm-item.active { background: var(--bg-tertiary); }
         .dm-item .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
         .dm-item .name { flex: 1; font-size: 15px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        
-        /* Empty state */
         .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); text-align: center; padding: 32px; }
         .empty-state .icon { font-size: 64px; margin-bottom: 16px; opacity: 0.5; }
         .empty-state h3 { margin-bottom: 8px; color: var(--text-primary); }
-        
-        /* Audio settings */
         .audio-select { width: 100%; padding: 10px; border: none; border-radius: 4px; background: var(--bg-tertiary); color: var(--text-primary); font-size: 14px; cursor: pointer; }
         .audio-select:focus { outline: 2px solid var(--accent); }
         .mic-test { margin-top: 8px; }
         .mic-level-bar { width: 100%; height: 20px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden; }
         .mic-level-fill { height: 100%; width: 0%; background: var(--green); transition: width 0.1s ease, background 0.2s ease; border-radius: 4px; }
-        
-        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
-        
-        /* Debug panel */
         .debug-panel { position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.95); color: #0f0; padding: 10px; font-family: monospace; font-size: 10px; max-width: 400px; max-height: 300px; overflow-y: auto; border-radius: 4px; z-index: 9999; display: none; }
         .debug-panel.show { display: block; }
         .debug-panel .error { color: #f55; }
         .debug-panel .warn { color: #fa0; }
         .debug-panel .success { color: #0f0; }
-        
-        /* Responsive */
         @media (max-width: 900px) { .members-sidebar { display: none; } }
         @media (max-width: 600px) { .channel-sidebar, .dm-sidebar { width: 200px; } }
     </style>
@@ -1382,19 +1346,12 @@ function getClientHTML() {
 <div id="app"></div>
 <div id="debugPanel" class="debug-panel"></div>
 <script>
-// ============================================
-// КЛИЕНТСКИЙ КОД - НАЧАЛО
-// ============================================
 (function() {
     'use strict';
-    
+
     var API_URL = window.location.origin;
     var WS_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
-    
-    // ============================================
-    // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
-    // ============================================
-    
+
     var currentUser = null;
     var token = null;
     var ws = null;
@@ -1405,18 +1362,21 @@ function getClientHTML() {
     var messages = [];
     var typingUsers = {};
     var reconnectAttempts = 0;
-    
+    var wsReconnectTimer = null;
+
     // Voice state
     var localStream = null;
     var screenStream = null;
-    var peerConnections = new Map(); // Map<odego, RTCPeerConnection>
-    var screenPeerConnections = new Map(); // Отдельные соединения для screen share
+    var peerConnections = new Map();
+    var screenPeerConnections = new Map();
     var currentVoiceChannel = null;
+    var pendingVoiceRejoin = null; // НОВОЕ: канал для переподключения после WS reconnect
     var voiceParticipants = new Map();
     var isMuted = false;
     var isDeafened = false;
     var isScreenSharing = false;
     var pendingCandidates = new Map();
+    var screenPendingCandidates = new Map(); // НОВОЕ: буфер кандидатов для screen PC
     var speakingUsers = new Set();
     var audioContext = null;
     var localAnalyser = null;
@@ -1424,30 +1384,23 @@ function getClientHTML() {
     var usingRelay = false;
     var showVoiceGrid = false;
     var focusedStream = null;
-    var remoteStreams = new Map(); // Map<odego, { audio: MediaStream, screen: MediaStream }>
-    
-    // Screen share settings
-    var screenShareSettings = {
-        resolution: '720',
-        frameRate: 30
-    };
-    
-    // Audio device settings
+    var remoteStreams = new Map();
+    var iceServersConfig = null; // НОВОЕ: кешированная конфигурация ICE
+
+    var screenShareSettings = { resolution: '720', frameRate: 30 };
     var selectedMicId = localStorage.getItem('selectedMicId') || '';
     var selectedOutputId = localStorage.getItem('selectedOutputId') || '';
-    
+
     var debugMode = true;
     var debugLog = [];
-    
-    // Mic test variables
     var micTestStream = null;
     var micTestInterval = null;
     var micTestCtx = null;
-    
+
     // ============================================
     // УТИЛИТЫ
     // ============================================
-    
+
     function debug(msg, type) {
         if (!debugMode) return;
         var time = new Date().toLocaleTimeString();
@@ -1459,7 +1412,7 @@ function getClientHTML() {
         var panel = document.getElementById('debugPanel');
         if (panel) { panel.innerHTML = debugLog.join('<br>'); panel.scrollTop = panel.scrollHeight; }
     }
-    
+
     function $(s) { return document.querySelector(s); }
     function $$(s) { return document.querySelectorAll(s); }
     function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
@@ -1469,7 +1422,7 @@ function getClientHTML() {
         var t = dt.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
         return dt.toDateString() === now.toDateString() ? 'Сегодня ' + t : dt.toLocaleDateString('ru-RU') + ' ' + t;
     }
-    
+
     function api(endpoint, opts) {
         opts = opts || {};
         var h = { 'Content-Type': 'application/json' };
@@ -1481,12 +1434,19 @@ function getClientHTML() {
             });
         });
     }
-    
+
     // ============================================
-    // ICE SERVERS CONFIGURATION
+    // ICE SERVERS - ЗАГРУЗКА С СЕРВЕРА + FALLBACK
     // ============================================
-    
+
+    // ИСПРАВЛЕНИЕ 1: Загрузка ICE-конфига с сервера с fallback на встроенный список.
+    // Это гарантирует актуальность credentials и позволяет менять TURN без деплоя.
     function getIceServers() {
+        if (iceServersConfig) return iceServersConfig;
+        return getBuiltinIceServers();
+    }
+
+    function getBuiltinIceServers() {
         return [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
@@ -1511,47 +1471,95 @@ function getClientHTML() {
             }
         ];
     }
-    
+
+    function loadIceConfig() {
+        return api('/api/ice-config').then(function(data) {
+            if (data && data.iceServers && data.iceServers.length) {
+                iceServersConfig = data.iceServers;
+                debug('ICE config loaded from server: ' + data.iceServers.length + ' servers', 'success');
+            }
+        }).catch(function(e) {
+            debug('ICE config load failed, using builtin: ' + e.message, 'warn');
+        });
+    }
+
     function shouldInitiate(myId, peerId) {
         return myId < peerId;
     }
-    
+
     // ============================================
     // WEBSOCKET
     // ============================================
-    
+
     function connectWebSocket() {
-        if (ws && ws.readyState === WebSocket.OPEN) return;
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
         debug('Connecting WS...', 'warn');
         ws = new WebSocket(WS_URL);
-        
+
         ws.onopen = function() {
             debug('WS connected', 'success');
             reconnectAttempts = 0;
             if (token) ws.send(JSON.stringify({ type: 'AUTH', token: token }));
         };
-        
+
         ws.onmessage = function(e) {
             try { handleWsMessage(JSON.parse(e.data)); } catch(err) { debug('WS parse error: ' + err, 'error'); }
         };
-        
+
         ws.onclose = function() {
             debug('WS disconnected', 'error');
-            if (currentVoiceChannel) { cleanupVoice(); currentVoiceChannel = null; render(); }
-            if (reconnectAttempts < 5 && token) {
+
+            // ИСПРАВЛЕНИЕ 2: При потере WS сохраняем канал для переподключения,
+            // но не уничтожаем localStream — он понадобится при восстановлении.
+            if (currentVoiceChannel) {
+                pendingVoiceRejoin = {
+                    channelId: currentVoiceChannel.id,
+                    channelName: currentVoiceChannel.name
+                };
+                // Закрываем только peer connections, но не останавливаем localStream
+                peerConnections.forEach(function(pc, uid) {
+                    pc.close();
+                    var a = document.getElementById('audio-' + uid);
+                    if (a) { a.srcObject = null; a.remove(); }
+                });
+                peerConnections.clear();
+                screenPeerConnections.forEach(function(pc) { pc.close(); });
+                screenPeerConnections.clear();
+                pendingCandidates.clear();
+                screenPendingCandidates.clear();
+                connectionStates.clear();
+                remoteStreams.clear();
+                speakingUsers.clear();
+                voiceParticipants.clear();
+                currentVoiceChannel = null;
+                render();
+            }
+
+            if (reconnectAttempts < 10 && token) {
                 reconnectAttempts++;
-                setTimeout(connectWebSocket, Math.min(1000 * reconnectAttempts, 5000));
+                var delay = Math.min(1000 * reconnectAttempts, 8000);
+                debug('Reconnecting in ' + delay + 'ms (attempt ' + reconnectAttempts + ')', 'warn');
+                wsReconnectTimer = setTimeout(connectWebSocket, delay);
             }
         };
-        
+
         ws.onerror = function(e) { debug('WS error', 'error'); };
     }
-    
+
     function handleWsMessage(d) {
         if (d.type !== 'PONG') debug('WS: ' + d.type);
-        
+
         switch(d.type) {
-            case 'AUTH_SUCCESS': debug('Auth OK: ' + d.username, 'success'); break;
+            case 'AUTH_SUCCESS':
+                debug('Auth OK: ' + d.username, 'success');
+                // ИСПРАВЛЕНИЕ 3: После переавторизации переподключаемся к голосовому каналу.
+                if (pendingVoiceRejoin && localStream) {
+                    var rejoin = pendingVoiceRejoin;
+                    pendingVoiceRejoin = null;
+                    debug('Rejoining voice channel after WS reconnect: ' + rejoin.channelId, 'warn');
+                    ws.send(JSON.stringify({ type: 'VOICE_JOIN', channelId: rejoin.channelId }));
+                }
+                break;
             case 'NEW_CHANNEL_MESSAGE':
                 if (currentChannel && d.message.channel_id === currentChannel.id) {
                     messages.push(d.message); renderMessages(); scrollToBottom();
@@ -1617,88 +1625,81 @@ function getClientHTML() {
                 break;
         }
     }
-    
+
     function handleTyping(d) {
         var k = d.channelId || d.visitorId;
         typingUsers[k] = { username: d.username, time: Date.now() };
         renderTypingIndicator();
         setTimeout(function() {
             if (typingUsers[k] && Date.now() - typingUsers[k].time > 3000) {
-                delete typingUsers[k];
-                renderTypingIndicator();
+                delete typingUsers[k]; renderTypingIndicator();
             }
         }, 3500);
     }
-    
+
     function renderTypingIndicator() {
         var el = $('.typing-indicator'); if (!el) return;
         var k = currentChannel ? currentChannel.id : (currentDM ? currentDM.id : null);
         var t = typingUsers[k];
         el.textContent = (t && t.username !== currentUser.username) ? t.username + ' печатает...' : '';
     }
-    
+
     function updateUserStatus(uid, status) {
         if (currentServer && currentServer.members) {
             var m = currentServer.members.find(function(x) { return x.id === uid; });
             if (m) { m.status = status; renderMembers(); }
         }
     }
-    
+
     // ============================================
-    // VOICE CHAT - ОСНОВНЫЕ ФУНКЦИИ
+    // VOICE CHAT
     // ============================================
-    
+
     function joinVoiceChannel(channel) {
         debug('Joining voice: ' + channel.name, 'warn');
-        
         if (currentVoiceChannel && currentVoiceChannel.id === channel.id) {
-            debug('Already in channel');
-            return;
+            debug('Already in channel'); return;
         }
-        if (currentVoiceChannel) {
-            leaveVoiceChannel();
-            return;
-        }
-        
+        if (currentVoiceChannel) { leaveVoiceChannel(); return; }
+
         var audioConstraints = {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true
         };
-        
-        if (selectedMicId) {
-            audioConstraints.deviceId = { exact: selectedMicId };
-        }
-        
-        navigator.mediaDevices.getUserMedia({
-            audio: audioConstraints,
-            video: false
-        }).then(function(stream) {
-            debug('Got mic, tracks: ' + stream.getAudioTracks().length, 'success');
-            localStream = stream;
-            if (isMuted) stream.getAudioTracks().forEach(function(t) { t.enabled = false; });
-            
-            try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                localAnalyser = audioContext.createAnalyser();
-                localAnalyser.fftSize = 256;
-                audioContext.createMediaStreamSource(stream).connect(localAnalyser);
-                detectSpeaking();
-            } catch(e) { debug('AudioContext error: ' + e.message, 'error'); }
-            
-            ws.send(JSON.stringify({ type: 'VOICE_JOIN', channelId: channel.id }));
-        }).catch(function(e) {
-            debug('Mic error: ' + e.message, 'error');
-            var msg = 'Не удалось получить доступ к микрофону: ' + e.message;
-            if (e.name === 'NotAllowedError') {
-                msg = 'Доступ к микрофону запрещен. Разрешите доступ в настройках браузера.';
-            } else if (e.name === 'NotFoundError') {
-                msg = 'Микрофон не найден. Подключите микрофон и попробуйте снова.';
-            }
-            alert(msg);
-        });
+        if (selectedMicId) audioConstraints.deviceId = { exact: selectedMicId };
+
+        navigator.mediaDevices.getUserMedia({ audio: audioConstraints, video: false })
+            .then(function(stream) {
+                debug('Got mic, tracks: ' + stream.getAudioTracks().length, 'success');
+                localStream = stream;
+                if (isMuted) stream.getAudioTracks().forEach(function(t) { t.enabled = false; });
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    localAnalyser = audioContext.createAnalyser();
+                    localAnalyser.fftSize = 256;
+                    audioContext.createMediaStreamSource(stream).connect(localAnalyser);
+                    detectSpeaking();
+                } catch(e) { debug('AudioContext error: ' + e.message, 'error'); }
+                ws.send(JSON.stringify({ type: 'VOICE_JOIN', channelId: channel.id }));
+            })
+            .catch(function(e) {
+                debug('Mic error: ' + e.message, 'error');
+                var msg = 'Не удалось получить доступ к микрофону: ' + e.message;
+                if (e.name === 'NotAllowedError') msg = 'Доступ к микрофону запрещен. Разрешите доступ в настройках браузера.';
+                else if (e.name === 'NotFoundError') msg = 'Микрофон не найден. Подключите микрофон и попробуйте снова.';
+                else if (e.name === 'OverconstrainedError') {
+                    // ИСПРАВЛЕНИЕ 4: Если выбранный микрофон недоступен — пробуем дефолтный.
+                    debug('Selected mic unavailable, retrying with default', 'warn');
+                    selectedMicId = '';
+                    localStorage.removeItem('selectedMicId');
+                    joinVoiceChannel(channel);
+                    return;
+                }
+                alert(msg);
+            });
     }
-    
+
     function detectSpeaking() {
         if (!currentVoiceChannel || !localAnalyser) return;
         var data = new Uint8Array(localAnalyser.frequencyBinCount);
@@ -1715,12 +1716,12 @@ function getClientHTML() {
         }
         if (currentVoiceChannel) requestAnimationFrame(detectSpeaking);
     }
-    
+
     function handleVoiceSpeaking(d) {
         if (d.speaking) speakingUsers.add(d.visitorId); else speakingUsers.delete(d.visitorId);
         updateSpeakingUI();
     }
-    
+
     function updateSpeakingUI() {
         $$('.voice-participant').forEach(function(el) {
             el.classList.toggle('speaking', speakingUsers.has(el.getAttribute('data-user-id')));
@@ -1729,51 +1730,52 @@ function getClientHTML() {
             el.classList.toggle('speaking', speakingUsers.has(el.getAttribute('data-user-id')));
         });
         var av = $('.user-panel .avatar');
-        if (av) av.classList.toggle('speaking', speakingUsers.has(currentUser.id) && currentVoiceChannel);
+        if (av) av.classList.toggle('speaking', speakingUsers.has(currentUser.id) && !!currentVoiceChannel);
     }
-    
+
     function handleVoiceJoined(d) {
         debug('VOICE_JOINED, participants: ' + (d.participants ? d.participants.length : 0), 'success');
-        
+
+        // ИСПРАВЛЕНИЕ 5: Если сервер прислал ICE-серверы в ответе — используем их.
+        if (d.iceServers && d.iceServers.length) {
+            iceServersConfig = d.iceServers;
+            debug('ICE config updated from VOICE_JOINED', 'success');
+        }
+
         var ch = null;
         if (currentServer && currentServer.channels) {
             ch = currentServer.channels.find(function(c) { return c.id === d.channelId; });
         }
-        
         if (ch) {
             currentVoiceChannel = ch;
             if (!ch.voiceParticipants) ch.voiceParticipants = [];
             if (!ch.voiceParticipants.some(function(p) { return (p.visitorId || p.odego) === currentUser.id; })) {
                 ch.voiceParticipants.push({
-                    visitorId: currentUser.id,
-                    username: currentUser.username,
-                    muted: isMuted,
-                    deafened: isDeafened,
-                    streaming: false
+                    visitorId: currentUser.id, username: currentUser.username,
+                    muted: isMuted, deafened: isDeafened, streaming: false
                 });
             }
         } else {
             currentVoiceChannel = { id: d.channelId, name: 'Голосовой' };
         }
-        
+
         voiceParticipants.clear();
         connectionStates.clear();
         remoteStreams.clear();
         usingRelay = false;
-        
+
         if (d.participants && d.participants.length > 0) {
             d.participants.forEach(function(p) {
                 var uid = p.visitorId || p.odego;
                 debug('Existing participant: ' + p.username + ' (' + uid.slice(0,8) + ')');
                 voiceParticipants.set(uid, p);
                 connectionStates.set(uid, 'connecting');
-                createPeerConnection(uid, shouldInitiate(currentUser.id, uid));
+                createPeerConnection(uid, shouldInitiate(currentUser.id, uid), false);
             });
         }
-        
         render();
     }
-    
+
     function handleVoiceLeft(d) {
         debug('VOICE_LEFT');
         if (currentServer) {
@@ -1789,12 +1791,12 @@ function getClientHTML() {
         showVoiceGrid = false;
         render();
     }
-    
+
     function handleVoiceUserJoined(d) {
         var uid = d.user.visitorId || d.user.odego;
         if (uid === currentUser.id) return;
         debug('User joined voice: ' + d.user.username, 'success');
-        
+
         if (currentServer) {
             var ch = currentServer.channels.find(function(c) { return c.id === d.channelId; });
             if (ch) {
@@ -1804,39 +1806,33 @@ function getClientHTML() {
                 }
             }
         }
-        
+
         if (currentVoiceChannel && currentVoiceChannel.id === d.channelId && localStream) {
             if (!voiceParticipants.has(uid)) voiceParticipants.set(uid, d.user);
             connectionStates.set(uid, 'connecting');
-            createPeerConnection(uid, shouldInitiate(currentUser.id, uid));
+            createPeerConnection(uid, shouldInitiate(currentUser.id, uid), false);
         }
-        
         renderChannels();
         if (showVoiceGrid) renderVoiceGrid();
     }
-    
+
     function handleVoiceUserLeft(d) {
         var uid = d.visitorId;
         debug('User left voice: ' + uid.slice(0,8));
-        
         voiceParticipants.delete(uid);
         pendingCandidates.delete(uid);
+        screenPendingCandidates.delete(uid);
         speakingUsers.delete(uid);
         connectionStates.delete(uid);
         remoteStreams.delete(uid);
-        
         var pc = peerConnections.get(uid);
         if (pc) { pc.close(); peerConnections.delete(uid); }
-        
         var spc = screenPeerConnections.get(uid);
         if (spc) { spc.close(); screenPeerConnections.delete(uid); }
-        
         var audio = document.getElementById('audio-' + uid);
         if (audio) { audio.srcObject = null; audio.remove(); }
-        
         var video = document.getElementById('video-' + uid);
         if (video) { video.srcObject = null; video.remove(); }
-        
         if (currentServer) {
             var ch = currentServer.channels.find(function(c) { return c.id === d.channelId; });
             if (ch && ch.voiceParticipants) {
@@ -1845,17 +1841,15 @@ function getClientHTML() {
                 });
             }
         }
-        
         renderChannels();
         if (showVoiceGrid) renderVoiceGrid();
     }
-    
+
     function handleVoiceSignal(d) {
         var sig = d.signal;
         var type = sig.type || (sig.candidate ? 'candidate' : '?');
         var signalType = d.signalType || 'audio';
         debug('Signal from ' + d.fromUserId.slice(0,8) + ': ' + type + ' (' + signalType + ')');
-        
         if (signalType === 'screen') {
             if (sig.type === 'offer') handleScreenOffer(d.fromUserId, d.fromUsername, sig);
             else if (sig.type === 'answer') handleScreenAnswer(d.fromUserId, sig);
@@ -1866,36 +1860,38 @@ function getClientHTML() {
             else if (sig.candidate) handleIceCandidate(d.fromUserId, sig);
         }
     }
-    
+
     // ============================================
-    // WEBRTC - AUDIO PEER CONNECTIONS
+    // WEBRTC - PEER CONNECTIONS
     // ============================================
-    
-    function createPeerConnection(uid, initiator) {
-        debug('Creating audio PC to ' + uid.slice(0,8) + ', init: ' + initiator, 'warn');
-        
-        if (peerConnections.has(uid)) {
-            peerConnections.get(uid).close();
-            peerConnections.delete(uid);
-        }
-        
+
+    // ИСПРАВЛЕНИЕ 6: Параметр relayOnly позволяет пересоздать соединение
+    // через TURN при провале обычного ICE — главный механизм для внешней сети.
+    function createPeerConnection(uid, initiator, relayOnly) {
+        debug('Creating audio PC to ' + uid.slice(0,8) + ', init: ' + initiator + ', relay: ' + relayOnly, 'warn');
+
+        var existing = peerConnections.get(uid);
+        if (existing) { existing.close(); peerConnections.delete(uid); }
+
         var config = {
             iceServers: getIceServers(),
             iceCandidatePoolSize: 10,
-            iceTransportPolicy: 'all'
+            iceTransportPolicy: relayOnly ? 'relay' : 'all',
+            bundlePolicy: 'max-bundle',
+            rtcpMuxPolicy: 'require'
         };
-        
+
         var pc = new RTCPeerConnection(config);
         peerConnections.set(uid, pc);
         if (!pendingCandidates.has(uid)) pendingCandidates.set(uid, []);
-        
+
         if (localStream) {
             localStream.getTracks().forEach(function(t) {
                 debug('Adding audio track to ' + uid.slice(0,8));
                 pc.addTrack(t, localStream);
             });
         }
-        
+
         pc.onicecandidate = function(e) {
             if (e.candidate) {
                 var cand = e.candidate.candidate;
@@ -1904,54 +1900,78 @@ function getClientHTML() {
                     usingRelay = true;
                     renderVoiceConnected();
                 } else if (cand.indexOf('srflx') !== -1) {
-                    debug('ICE candidate: STUN', 'success');
-                } else if (cand.indexOf('host') !== -1) {
-                    debug('ICE candidate: Host');
+                    debug('ICE candidate: STUN srflx', 'success');
+                } else {
+                    debug('ICE candidate: host');
                 }
-                ws.send(JSON.stringify({
-                    type: 'VOICE_SIGNAL',
-                    targetUserId: uid,
-                    signal: e.candidate,
-                    signalType: 'audio'
-                }));
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'VOICE_SIGNAL',
+                        targetUserId: uid,
+                        signal: e.candidate,
+                        signalType: 'audio'
+                    }));
+                }
+            } else {
+                debug('ICE gathering complete for ' + uid.slice(0,8));
             }
         };
-        
+
+        pc.onicegatheringstatechange = function() {
+            debug('ICE gathering ' + uid.slice(0,8) + ': ' + pc.iceGatheringState);
+        };
+
         pc.oniceconnectionstatechange = function() {
             var state = pc.iceConnectionState;
             debug('ICE state ' + uid.slice(0,8) + ': ' + state,
                 state === 'connected' || state === 'completed' ? 'success' :
                 state === 'failed' || state === 'disconnected' ? 'error' : 'warn');
-            
+
             connectionStates.set(uid, state);
             renderChannels();
             if (showVoiceGrid) renderVoiceGrid();
-            
+
             if (state === 'failed') {
-                debug('ICE failed for ' + uid.slice(0,8) + ', attempting restart...', 'error');
-                setTimeout(function() {
-                    if (pc.iceConnectionState === 'failed') {
-                        pc.restartIce();
-                    }
-                }, 1000);
+                if (!relayOnly) {
+                    // ИСПРАВЛЕНИЕ 7: При провале сначала пробуем restartIce,
+                    // затем пересоздаём соединение с relay-only политикой.
+                    debug('ICE failed, trying restartIce first for ' + uid.slice(0,8), 'warn');
+                    pc.restartIce();
+                    setTimeout(function() {
+                        if (peerConnections.get(uid) === pc && pc.iceConnectionState === 'failed') {
+                            debug('restartIce failed, switching to relay-only for ' + uid.slice(0,8), 'error');
+                            var shouldInit = shouldInitiate(currentUser.id, uid);
+                            createPeerConnection(uid, shouldInit, true);
+                            if (shouldInit) sendOffer(uid);
+                        }
+                    }, 4000);
+                } else {
+                    // Уже relay-only и всё равно failed — логируем
+                    debug('Relay-only ICE also failed for ' + uid.slice(0,8) + '. Check TURN server.', 'error');
+                }
             } else if (state === 'disconnected') {
                 setTimeout(function() {
-                    if (pc.iceConnectionState === 'disconnected') {
-                        debug('Still disconnected from ' + uid.slice(0,8) + ', restarting ICE...', 'warn');
+                    if (peerConnections.get(uid) === pc && pc.iceConnectionState === 'disconnected') {
+                        debug('Still disconnected ' + uid.slice(0,8) + ', restarting ICE', 'warn');
                         pc.restartIce();
                     }
                 }, 3000);
             }
         };
-        
+
+        pc.onconnectionstatechange = function() {
+            debug('Connection state ' + uid.slice(0,8) + ': ' + pc.connectionState,
+                pc.connectionState === 'connected' ? 'success' :
+                pc.connectionState === 'failed' ? 'error' : 'warn');
+        };
+
         pc.ontrack = function(e) {
             debug('Got audio track from ' + uid.slice(0,8), 'success');
-            
             if (e.streams && e.streams[0]) {
                 var streams = remoteStreams.get(uid) || {};
                 streams.audio = e.streams[0];
                 remoteStreams.set(uid, streams);
-                
+
                 var audio = document.getElementById('audio-' + uid);
                 if (!audio) {
                     audio = document.createElement('audio');
@@ -1962,96 +1982,124 @@ function getClientHTML() {
                 }
                 audio.srcObject = e.streams[0];
                 audio.muted = isDeafened;
-                
                 if (selectedOutputId && audio.setSinkId) {
                     audio.setSinkId(selectedOutputId).catch(function(err) {
                         debug('setSinkId error: ' + err.message, 'error');
                     });
                 }
-                
                 audio.play().then(function() {
                     debug('Audio playing from ' + uid.slice(0,8), 'success');
                 }).catch(function(err) {
-                    debug('Audio play error: ' + err.message, 'warn');
+                    debug('Audio play error: ' + err.message + ' — waiting for click', 'warn');
                     document.addEventListener('click', function playOnClick() {
-                        audio.play();
+                        audio.play().catch(function(){});
                         document.removeEventListener('click', playOnClick);
                     }, { once: true });
                 });
             }
         };
-        
-        if (initiator) {
-            debug('Creating offer for ' + uid.slice(0,8));
-            pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: false })
-                .then(function(offer) { return pc.setLocalDescription(offer); })
-                .then(function() {
-                    debug('Sending offer to ' + uid.slice(0,8));
+
+        if (initiator) sendOffer(uid);
+        return pc;
+    }
+
+    function sendOffer(uid) {
+        var pc = peerConnections.get(uid);
+        if (!pc) return;
+        debug('Creating offer for ' + uid.slice(0,8));
+        pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: false })
+            .then(function(offer) { return pc.setLocalDescription(offer); })
+            .then(function() {
+                debug('Sending offer to ' + uid.slice(0,8));
+                if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: 'VOICE_SIGNAL',
                         targetUserId: uid,
                         signal: pc.localDescription,
                         signalType: 'audio'
                     }));
-                })
-                .catch(function(e) { debug('Offer error: ' + e.message, 'error'); });
-        }
-        
-        return pc;
+                }
+            })
+            .catch(function(e) { debug('Offer error: ' + e.message, 'error'); });
     }
-    
+
     function handleOffer(uid, username, offer) {
         debug('Got audio offer from ' + uid.slice(0,8));
-        
         if (!voiceParticipants.has(uid)) {
             voiceParticipants.set(uid, { visitorId: uid, username: username, muted: false, deafened: false });
         }
-        
+
+        // ИСПРАВЛЕНИЕ 8: Если приходит повторный offer (например, после restartIce
+        // на стороне инициатора) — обрабатываем его корректно через rollback.
         var pc = peerConnections.get(uid);
         if (!pc) {
-            pc = createPeerConnection(uid, false);
+            pc = createPeerConnection(uid, false, false);
         }
-        
-        pc.setRemoteDescription(new RTCSessionDescription(offer))
-            .then(function() {
-                var cands = pendingCandidates.get(uid) || [];
-                debug('Processing ' + cands.length + ' pending audio candidates');
-                cands.forEach(function(c) {
-                    pc.addIceCandidate(new RTCIceCandidate(c)).catch(function() {});
-                });
-                pendingCandidates.set(uid, []);
-                return pc.createAnswer();
-            })
-            .then(function(ans) { return pc.setLocalDescription(ans); })
-            .then(function() {
-                debug('Sending audio answer to ' + uid.slice(0,8));
-                ws.send(JSON.stringify({
-                    type: 'VOICE_SIGNAL',
-                    targetUserId: uid,
-                    signal: pc.localDescription,
-                    signalType: 'audio'
-                }));
-            })
-            .catch(function(e) { debug('Handle offer error: ' + e.message, 'error'); });
+
+        var applyOffer = function() {
+            pc.setRemoteDescription(new RTCSessionDescription(offer))
+                .then(function() {
+                    var cands = pendingCandidates.get(uid) || [];
+                    debug('Processing ' + cands.length + ' pending audio candidates');
+                    var p = Promise.resolve();
+                    cands.forEach(function(c) {
+                        p = p.then(function() {
+                            return pc.addIceCandidate(new RTCIceCandidate(c)).catch(function(){});
+                        });
+                    });
+                    pendingCandidates.set(uid, []);
+                    return p;
+                })
+                .then(function() { return pc.createAnswer(); })
+                .then(function(ans) { return pc.setLocalDescription(ans); })
+                .then(function() {
+                    debug('Sending audio answer to ' + uid.slice(0,8));
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            type: 'VOICE_SIGNAL',
+                            targetUserId: uid,
+                            signal: pc.localDescription,
+                            signalType: 'audio'
+                        }));
+                    }
+                })
+                .catch(function(e) { debug('Handle offer error: ' + e.message, 'error'); });
+        };
+
+        // Если уже есть локальное описание — делаем rollback перед новым offer
+        if (pc.signalingState !== 'stable') {
+            debug('Rolling back before applying new offer from ' + uid.slice(0,8), 'warn');
+            pc.setLocalDescription({ type: 'rollback' })
+                .then(applyOffer)
+                .catch(function() { applyOffer(); }); // fallback если rollback не поддерживается
+        } else {
+            applyOffer();
+        }
     }
-    
+
     function handleAnswer(uid, answer) {
         debug('Got audio answer from ' + uid.slice(0,8));
         var pc = peerConnections.get(uid);
         if (!pc) { debug('No PC for ' + uid.slice(0,8), 'error'); return; }
-        
+        if (pc.signalingState !== 'have-local-offer') {
+            debug('Wrong signaling state for answer: ' + pc.signalingState, 'warn'); return;
+        }
         pc.setRemoteDescription(new RTCSessionDescription(answer))
             .then(function() {
                 var cands = pendingCandidates.get(uid) || [];
-                debug('Processing ' + cands.length + ' pending audio candidates');
+                debug('Processing ' + cands.length + ' pending audio candidates after answer');
+                var p = Promise.resolve();
                 cands.forEach(function(c) {
-                    pc.addIceCandidate(new RTCIceCandidate(c)).catch(function() {});
+                    p = p.then(function() {
+                        return pc.addIceCandidate(new RTCIceCandidate(c)).catch(function(){});
+                    });
                 });
                 pendingCandidates.set(uid, []);
+                return p;
             })
             .catch(function(e) { debug('Handle answer error: ' + e.message, 'error'); });
     }
-    
+
     function handleIceCandidate(uid, candidate) {
         var pc = peerConnections.get(uid);
         if (!pc || !pc.remoteDescription || !pc.remoteDescription.type) {
@@ -2059,165 +2107,121 @@ function getClientHTML() {
             pendingCandidates.get(uid).push(candidate);
             return;
         }
-        pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(function() {});
+        pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(function(e) {
+            debug('addIceCandidate error: ' + e.message, 'warn');
+        });
     }
-    
+
     // ============================================
     // SCREEN SHARING
     // ============================================
-    
+
     function showScreenShareModal() {
-        if (!currentVoiceChannel) {
-            alert('Сначала подключитесь к голосовому каналу');
-            return;
-        }
-        
-        $('#modalContainer').innerHTML = 
-            '<div class="modal-overlay" id="modalOverlay">' +
-            '<div class="modal">' +
-            '<div class="modal-header">' +
-            '<h2>Демонстрация экрана</h2>' +
-            '<p>Выберите настройки качества трансляции</p>' +
-            '</div>' +
-            '<div class="modal-body">' +
-            '<div class="screen-settings">' +
-            '<div class="setting-group">' +
-            '<label>Разрешение</label>' +
-            '<select id="screenResolution">' +
+        if (!currentVoiceChannel) { alert('Сначала подключитесь к голосовому каналу'); return; }
+        $('#modalContainer').innerHTML =
+            '<div class="modal-overlay" id="modalOverlay"><div class="modal">' +
+            '<div class="modal-header"><h2>Демонстрация экрана</h2><p>Выберите настройки качества трансляции</p></div>' +
+            '<div class="modal-body"><div class="screen-settings">' +
+            '<div class="setting-group"><label>Разрешение</label><select id="screenResolution">' +
             '<option value="720" ' + (screenShareSettings.resolution === '720' ? 'selected' : '') + '>720p (HD)</option>' +
             '<option value="1080" ' + (screenShareSettings.resolution === '1080' ? 'selected' : '') + '>1080p (Full HD)</option>' +
             '<option value="source" ' + (screenShareSettings.resolution === 'source' ? 'selected' : '') + '>Исходное</option>' +
-            '</select>' +
-            '</div>' +
-            '<div class="setting-group">' +
-            '<label>Частота кадров</label>' +
-            '<select id="screenFps">' +
+            '</select></div>' +
+            '<div class="setting-group"><label>Частота кадров</label><select id="screenFps">' +
             '<option value="15" ' + (screenShareSettings.frameRate === 15 ? 'selected' : '') + '>15 FPS</option>' +
             '<option value="30" ' + (screenShareSettings.frameRate === 30 ? 'selected' : '') + '>30 FPS</option>' +
             '<option value="60" ' + (screenShareSettings.frameRate === 60 ? 'selected' : '') + '>60 FPS</option>' +
-            '</select>' +
-            '</div>' +
-            '</div>' +
-            '</div>' +
-            '<div class="modal-footer">' +
-            '<button class="btn secondary" id="cancelScreenBtn">Отмена</button>' +
-            '<button class="btn" id="startScreenBtn">Начать трансляцию</button>' +
-            '</div>' +
-            '</div>' +
-            '</div>';
-        
+            '</select></div></div></div>' +
+            '<div class="modal-footer"><button class="btn secondary" id="cancelScreenBtn">Отмена</button>' +
+            '<button class="btn" id="startScreenBtn">Начать трансляцию</button></div>' +
+            '</div></div>';
         $('#modalOverlay').onclick = function(e) { if (e.target.id === 'modalOverlay') closeModal(); };
         $('#cancelScreenBtn').onclick = closeModal;
         $('#startScreenBtn').onclick = startScreenShare;
     }
-    
+
     async function startScreenShare() {
         var resolution = $('#screenResolution').value;
         var fps = parseInt($('#screenFps').value);
-        
         screenShareSettings.resolution = resolution;
         screenShareSettings.frameRate = fps;
-        
         closeModal();
-        
-        var constraints = {
-            video: {
-                cursor: 'always',
-                frameRate: { ideal: fps, max: fps }
-            },
-            audio: {
-                echoCancellation: true,
-                noiseSuppression: true
-            }
-        };
-        
+
+        var constraints = { video: { cursor: 'always', frameRate: { ideal: fps, max: fps } }, audio: { echoCancellation: true, noiseSuppression: true } };
         if (resolution !== 'source') {
             var height = parseInt(resolution);
             constraints.video.height = { ideal: height };
             constraints.video.width = { ideal: Math.round(height * 16 / 9) };
         }
-        
         try {
             debug('Requesting screen capture...', 'warn');
             screenStream = await navigator.mediaDevices.getDisplayMedia(constraints);
-            
             debug('Screen capture started', 'success');
             isScreenSharing = true;
-            
             screenStream.getVideoTracks()[0].onended = function() {
                 debug('Screen share ended by user');
                 stopScreenShare();
             };
-            
-            // Отправить стрим всем участникам
             voiceParticipants.forEach(function(p, odego) {
                 createScreenPeerConnection(odego, true);
             });
-            
             ws.send(JSON.stringify({ type: 'VOICE_STREAM_START', streamType: 'screen' }));
-            
             renderVoiceConnected();
             renderChannels();
             if (showVoiceGrid) renderVoiceGrid();
-            
         } catch(e) {
             debug('Screen share error: ' + e.message, 'error');
             var msg = 'Не удалось начать демонстрацию экрана: ' + e.message;
-            if (e.name === 'NotAllowedError') {
-                msg = 'Демонстрация экрана отменена или запрещена.';
-            }
+            if (e.name === 'NotAllowedError') msg = 'Демонстрация экрана отменена или запрещена.';
             alert(msg);
         }
     }
-    
+
     function stopScreenShare() {
         if (!isScreenSharing) return;
-        
         debug('Stopping screen share');
         isScreenSharing = false;
-        
         if (screenStream) {
             screenStream.getTracks().forEach(function(t) { t.stop(); });
             screenStream = null;
         }
-        
-        screenPeerConnections.forEach(function(pc, uid) {
-            pc.close();
-        });
+        screenPeerConnections.forEach(function(pc) { pc.close(); });
         screenPeerConnections.clear();
-        
-        ws.send(JSON.stringify({ type: 'VOICE_STREAM_STOP' }));
-        
+        screenPendingCandidates.clear();
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'VOICE_STREAM_STOP' }));
+        }
         renderVoiceConnected();
         renderChannels();
         if (showVoiceGrid) renderVoiceGrid();
     }
-    
+
+    // ИСПРАВЛЕНИЕ 9: Screen PC теперь тоже буферизует ICE-кандидатов
+    // и поддерживает relay-only fallback.
     function createScreenPeerConnection(uid, initiator) {
         debug('Creating screen PC to ' + uid.slice(0,8) + ', init: ' + initiator, 'warn');
-        
-        if (screenPeerConnections.has(uid)) {
-            screenPeerConnections.get(uid).close();
-            screenPeerConnections.delete(uid);
-        }
-        
+        var existing = screenPeerConnections.get(uid);
+        if (existing) { existing.close(); screenPeerConnections.delete(uid); }
+
         var config = {
             iceServers: getIceServers(),
-            iceCandidatePoolSize: 10
+            iceCandidatePoolSize: 10,
+            bundlePolicy: 'max-bundle',
+            rtcpMuxPolicy: 'require'
         };
-        
         var pc = new RTCPeerConnection(config);
         screenPeerConnections.set(uid, pc);
-        
+        if (!screenPendingCandidates.has(uid)) screenPendingCandidates.set(uid, []);
+
         if (initiator && screenStream) {
             screenStream.getTracks().forEach(function(t) {
                 debug('Adding screen track (' + t.kind + ') to ' + uid.slice(0,8));
                 pc.addTrack(t, screenStream);
             });
         }
-        
+
         pc.onicecandidate = function(e) {
-            if (e.candidate) {
+            if (e.candidate && ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                     type: 'VOICE_SIGNAL',
                     targetUserId: uid,
@@ -2226,147 +2230,151 @@ function getClientHTML() {
                 }));
             }
         };
-        
+
         pc.oniceconnectionstatechange = function() {
-            debug('Screen ICE ' + uid.slice(0,8) + ': ' + pc.iceConnectionState,
-                pc.iceConnectionState === 'connected' ? 'success' : 'warn');
+            var state = pc.iceConnectionState;
+            debug('Screen ICE ' + uid.slice(0,8) + ': ' + state,
+                state === 'connected' ? 'success' : state === 'failed' ? 'error' : 'warn');
+            if (state === 'failed') {
+                debug('Screen ICE failed for ' + uid.slice(0,8) + ', retrying', 'error');
+                pc.restartIce();
+            }
         };
-        
+
         pc.ontrack = function(e) {
             debug('Got screen track from ' + uid.slice(0,8), 'success');
-            
             if (e.streams && e.streams[0]) {
                 var streams = remoteStreams.get(uid) || {};
                 streams.screen = e.streams[0];
                 remoteStreams.set(uid, streams);
-                
                 if (showVoiceGrid) renderVoiceGrid();
             }
         };
-        
+
         if (initiator) {
             pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true })
                 .then(function(offer) { return pc.setLocalDescription(offer); })
                 .then(function() {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            type: 'VOICE_SIGNAL',
+                            targetUserId: uid,
+                            signal: pc.localDescription,
+                            signalType: 'screen'
+                        }));
+                    }
+                })
+                .catch(function(e) { debug('Screen offer error: ' + e.message, 'error'); });
+        }
+        return pc;
+    }
+
+    function handleScreenOffer(uid, username, offer) {
+        debug('Got screen offer from ' + uid.slice(0,8));
+        var pc = createScreenPeerConnection(uid, false);
+        pc.setRemoteDescription(new RTCSessionDescription(offer))
+            .then(function() {
+                // Применяем буферизованные кандидаты
+                var cands = screenPendingCandidates.get(uid) || [];
+                debug('Processing ' + cands.length + ' pending screen candidates');
+                var p = Promise.resolve();
+                cands.forEach(function(c) {
+                    p = p.then(function() {
+                        return pc.addIceCandidate(new RTCIceCandidate(c)).catch(function(){});
+                    });
+                });
+                screenPendingCandidates.set(uid, []);
+                return p;
+            })
+            .then(function() { return pc.createAnswer(); })
+            .then(function(ans) { return pc.setLocalDescription(ans); })
+            .then(function() {
+                if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: 'VOICE_SIGNAL',
                         targetUserId: uid,
                         signal: pc.localDescription,
                         signalType: 'screen'
                     }));
-                })
-                .catch(function(e) { debug('Screen offer error: ' + e.message, 'error'); });
-        }
-        
-        return pc;
-    }
-    
-    function handleScreenOffer(uid, username, offer) {
-        debug('Got screen offer from ' + uid.slice(0,8));
-        
-        var pc = createScreenPeerConnection(uid, false);
-        
-        pc.setRemoteDescription(new RTCSessionDescription(offer))
-            .then(function() { return pc.createAnswer(); })
-            .then(function(ans) { return pc.setLocalDescription(ans); })
-            .then(function() {
-                ws.send(JSON.stringify({
-                    type: 'VOICE_SIGNAL',
-                    targetUserId: uid,
-                    signal: pc.localDescription,
-                    signalType: 'screen'
-                }));
+                }
             })
             .catch(function(e) { debug('Screen answer error: ' + e.message, 'error'); });
     }
-    
+
     function handleScreenAnswer(uid, answer) {
         var pc = screenPeerConnections.get(uid);
         if (!pc) return;
-        
         pc.setRemoteDescription(new RTCSessionDescription(answer))
+            .then(function() {
+                var cands = screenPendingCandidates.get(uid) || [];
+                var p = Promise.resolve();
+                cands.forEach(function(c) {
+                    p = p.then(function() {
+                        return pc.addIceCandidate(new RTCIceCandidate(c)).catch(function(){});
+                    });
+                });
+                screenPendingCandidates.set(uid, []);
+                return p;
+            })
             .catch(function(e) { debug('Screen answer error: ' + e.message, 'error'); });
     }
-    
+
     function handleScreenIceCandidate(uid, candidate) {
         var pc = screenPeerConnections.get(uid);
-        if (!pc || !pc.remoteDescription) return;
-        pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(function() {});
+        // ИСПРАВЛЕНИЕ 10: Буферизуем кандидаты для screen PC так же, как для audio PC.
+        if (!pc || !pc.remoteDescription || !pc.remoteDescription.type) {
+            if (!screenPendingCandidates.has(uid)) screenPendingCandidates.set(uid, []);
+            screenPendingCandidates.get(uid).push(candidate);
+            return;
+        }
+        pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(function(e) {
+            debug('Screen addIceCandidate error: ' + e.message, 'warn');
+        });
     }
-    
+
     function handleStreamStart(d) {
         var p = voiceParticipants.get(d.visitorId);
-        if (p) {
-            p.streaming = true;
-            p.streamType = d.streamType;
-        }
-        
+        if (p) { p.streaming = true; p.streamType = d.streamType; }
         if (currentServer) {
             currentServer.channels.forEach(function(ch) {
                 if (ch.voiceParticipants) {
-                    var vp = ch.voiceParticipants.find(function(x) {
-                        return (x.visitorId || x.odego) === d.visitorId;
-                    });
-                    if (vp) {
-                        vp.streaming = true;
-                        vp.streamType = d.streamType;
-                    }
+                    var vp = ch.voiceParticipants.find(function(x) { return (x.visitorId || x.odego) === d.visitorId; });
+                    if (vp) { vp.streaming = true; vp.streamType = d.streamType; }
                 }
             });
         }
-        
-        // Создать PC для приема стрима
         if (d.visitorId !== currentUser.id && currentVoiceChannel) {
             createScreenPeerConnection(d.visitorId, false);
         }
-        
         renderChannels();
         if (showVoiceGrid) renderVoiceGrid();
     }
-    
+
     function handleStreamStop(d) {
         var p = voiceParticipants.get(d.visitorId);
-        if (p) {
-            p.streaming = false;
-            p.streamType = null;
-        }
-        
+        if (p) { p.streaming = false; p.streamType = null; }
         if (currentServer) {
             currentServer.channels.forEach(function(ch) {
                 if (ch.voiceParticipants) {
-                    var vp = ch.voiceParticipants.find(function(x) {
-                        return (x.visitorId || x.odego) === d.visitorId;
-                    });
-                    if (vp) {
-                        vp.streaming = false;
-                        vp.streamType = null;
-                    }
+                    var vp = ch.voiceParticipants.find(function(x) { return (x.visitorId || x.odego) === d.visitorId; });
+                    if (vp) { vp.streaming = false; vp.streamType = null; }
                 }
             });
         }
-        
         var streams = remoteStreams.get(d.visitorId);
-        if (streams) {
-            streams.screen = null;
-            remoteStreams.set(d.visitorId, streams);
-        }
-        
+        if (streams) { streams.screen = null; remoteStreams.set(d.visitorId, streams); }
         var spc = screenPeerConnections.get(d.visitorId);
-        if (spc) {
-            spc.close();
-            screenPeerConnections.delete(d.visitorId);
-        }
-        
+        if (spc) { spc.close(); screenPeerConnections.delete(d.visitorId); }
+        screenPendingCandidates.delete(d.visitorId);
         if (focusedStream === d.visitorId) focusedStream = null;
-        
         renderChannels();
         if (showVoiceGrid) renderVoiceGrid();
     }
-    
+
     // ============================================
-    // VOICE CONTROL FUNCTIONS
+    // VOICE CONTROLS
     // ============================================
-    
+
     function handleVoiceMuteDeafen(d) {
         var p = voiceParticipants.get(d.visitorId);
         if (p) {
@@ -2376,9 +2384,7 @@ function getClientHTML() {
         if (currentServer) {
             currentServer.channels.forEach(function(ch) {
                 if (ch.voiceParticipants) {
-                    var vp = ch.voiceParticipants.find(function(x) {
-                        return (x.visitorId || x.odego) === d.visitorId;
-                    });
+                    var vp = ch.voiceParticipants.find(function(x) { return (x.visitorId || x.odego) === d.visitorId; });
                     if (vp) {
                         if (d.muted !== undefined) vp.muted = d.muted;
                         if (d.deafened !== undefined) vp.deafened = d.deafened;
@@ -2389,7 +2395,7 @@ function getClientHTML() {
         renderChannels();
         if (showVoiceGrid) renderVoiceGrid();
     }
-    
+
     function handleVoiceStateUpdate(d) {
         if (!currentServer) return;
         var ch = currentServer.channels.find(function(c) { return c.id === d.channelId; });
@@ -2397,28 +2403,18 @@ function getClientHTML() {
         if (!ch.voiceParticipants) ch.voiceParticipants = [];
         if (d.action === 'join') {
             if (!ch.voiceParticipants.some(function(p) { return (p.visitorId || p.odego) === d.visitorId; })) {
-                ch.voiceParticipants.push({
-                    visitorId: d.visitorId,
-                    username: d.username,
-                    muted: false,
-                    deafened: false,
-                    streaming: false
-                });
+                ch.voiceParticipants.push({ visitorId: d.visitorId, username: d.username, muted: false, deafened: false, streaming: false });
             }
         } else if (d.action === 'leave') {
-            ch.voiceParticipants = ch.voiceParticipants.filter(function(p) {
-                return (p.visitorId || p.odego) !== d.visitorId;
-            });
+            ch.voiceParticipants = ch.voiceParticipants.filter(function(p) { return (p.visitorId || p.odego) !== d.visitorId; });
         }
         renderChannels();
     }
-    
+
     function leaveVoiceChannel() {
         debug('Leaving voice channel');
         if (!currentVoiceChannel) return;
-        
         if (isScreenSharing) stopScreenShare();
-        
         var chId = currentVoiceChannel.id;
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'VOICE_LEAVE' }));
@@ -2431,30 +2427,28 @@ function getClientHTML() {
                 });
             }
         }
+        pendingVoiceRejoin = null; // Сбрасываем rejoin при намеренном выходе
         cleanupVoice();
         currentVoiceChannel = null;
         showVoiceGrid = false;
         render();
     }
-    
+
     function cleanupVoice() {
         debug('Cleanup voice resources');
-        
         peerConnections.forEach(function(pc, uid) {
             pc.close();
             var a = document.getElementById('audio-' + uid);
             if (a) { a.srcObject = null; a.remove(); }
         });
         peerConnections.clear();
-        
         screenPeerConnections.forEach(function(pc) { pc.close(); });
         screenPeerConnections.clear();
-        
         pendingCandidates.clear();
+        screenPendingCandidates.clear();
         speakingUsers.clear();
         connectionStates.clear();
         remoteStreams.clear();
-        
         if (localStream) {
             localStream.getTracks().forEach(function(t) { t.stop(); });
             localStream = null;
@@ -2468,7 +2462,6 @@ function getClientHTML() {
             audioContext = null;
             localAnalyser = null;
         }
-        
         voiceParticipants.clear();
         isMuted = false;
         isDeafened = false;
@@ -2476,7 +2469,7 @@ function getClientHTML() {
         usingRelay = false;
         focusedStream = null;
     }
-    
+
     function toggleMute() {
         if (!localStream) return;
         isMuted = !isMuted;
@@ -2489,7 +2482,7 @@ function getClientHTML() {
         renderUserPanel();
         renderChannels();
     }
-    
+
     function toggleDeafen() {
         isDeafened = !isDeafened;
         document.querySelectorAll('audio[id^="audio-"]').forEach(function(a) { a.muted = isDeafened; });
@@ -2505,90 +2498,67 @@ function getClientHTML() {
         renderUserPanel();
         renderChannels();
     }
-    
+
     // ============================================
     // AUDIO SETTINGS
     // ============================================
-    
+
     async function showAudioSettings() {
         var devices = [];
-        try {
-            devices = await navigator.mediaDevices.enumerateDevices();
-        } catch (e) {
-            alert('Не удалось получить список устройств: ' + e.message);
-            return;
-        }
-        
+        try { devices = await navigator.mediaDevices.enumerateDevices(); }
+        catch(e) { alert('Не удалось получить список устройств: ' + e.message); return; }
+
         var mics = devices.filter(function(d) { return d.kind === 'audioinput'; });
         var outputs = devices.filter(function(d) { return d.kind === 'audiooutput'; });
-        
+
         var micOptions = '<option value="">По умолчанию</option>';
         mics.forEach(function(m) {
             var selected = m.deviceId === selectedMicId ? ' selected' : '';
-            micOptions += '<option value="' + m.deviceId + '"' + selected + '>' +
-                escapeHtml(m.label || 'Микрофон ' + m.deviceId.slice(0,8)) + '</option>';
+            micOptions += '<option value="' + m.deviceId + '"' + selected + '>' + escapeHtml(m.label || 'Микрофон ' + m.deviceId.slice(0,8)) + '</option>';
         });
-        
         var outputOptions = '<option value="">По умолчанию</option>';
         outputs.forEach(function(o) {
             var selected = o.deviceId === selectedOutputId ? ' selected' : '';
-            outputOptions += '<option value="' + o.deviceId + '"' + selected + '>' +
-                escapeHtml(o.label || 'Динамик ' + o.deviceId.slice(0,8)) + '</option>';
+            outputOptions += '<option value="' + o.deviceId + '"' + selected + '>' + escapeHtml(o.label || 'Динамик ' + o.deviceId.slice(0,8)) + '</option>';
         });
-        
+
         $('#modalContainer').innerHTML =
-            '<div class="modal-overlay" id="modalOverlay">' +
-            '<div class="modal">' +
+            '<div class="modal-overlay" id="modalOverlay"><div class="modal">' +
             '<div class="modal-header"><h2>Настройки звука</h2></div>' +
             '<div class="modal-body">' +
-            '<div class="form-group"><label>Микрофон</label>' +
-            '<select id="micSelect" class="audio-select">' + micOptions + '</select></div>' +
-            '<div class="form-group"><label>Устройство вывода</label>' +
-            '<select id="outputSelect" class="audio-select">' + outputOptions + '</select></div>' +
+            '<div class="form-group"><label>Микрофон</label><select id="micSelect" class="audio-select">' + micOptions + '</select></div>' +
+            '<div class="form-group"><label>Устройство вывода</label><select id="outputSelect" class="audio-select">' + outputOptions + '</select></div>' +
             '<div class="form-group"><label>Проверка микрофона</label>' +
             '<div class="mic-test"><div class="mic-level-bar"><div class="mic-level-fill" id="micLevelFill"></div></div>' +
             '<button class="btn" id="testMicBtn" style="margin-top:8px;">Проверить</button></div></div>' +
-            '<div id="micTestResult" style="margin-top:8px;font-size:13px;"></div>' +
-            '</div>' +
-            '<div class="modal-footer">' +
-            '<button class="btn secondary" id="cancelAudioBtn">Отмена</button>' +
-            '<button class="btn" id="saveAudioBtn">Сохранить</button>' +
-            '</div></div></div>';
-        
+            '<div id="micTestResult" style="margin-top:8px;font-size:13px;"></div></div>' +
+            '<div class="modal-footer"><button class="btn secondary" id="cancelAudioBtn">Отмена</button>' +
+            '<button class="btn" id="saveAudioBtn">Сохранить</button></div></div></div>';
+
         $('#modalOverlay').onclick = function(e) { if (e.target.id === 'modalOverlay') { stopMicTest(); closeModal(); } };
         $('#cancelAudioBtn').onclick = function() { stopMicTest(); closeModal(); };
         $('#saveAudioBtn').onclick = saveAudioSettings;
         $('#testMicBtn').onclick = testMicrophone;
         $('#micSelect').onchange = function() { stopMicTest(); };
     }
-    
+
     async function testMicrophone() {
         stopMicTest();
-        
         var micId = $('#micSelect').value;
         var constraints = { audio: micId ? { deviceId: { exact: micId } } : true };
-        
         $('#micTestResult').innerHTML = '<span style="color:var(--yellow);">Получение доступа...</span>';
-        
         try {
             micTestStream = await navigator.mediaDevices.getUserMedia(constraints);
             $('#micTestResult').innerHTML = '<span style="color:var(--green);">✓ Микрофон активен</span>';
-            
             micTestCtx = new (window.AudioContext || window.webkitAudioContext)();
             var analyser = micTestCtx.createAnalyser();
             analyser.fftSize = 256;
             micTestCtx.createMediaStreamSource(micTestStream).connect(analyser);
             var data = new Uint8Array(analyser.frequencyBinCount);
-            
-            var maxLevel = 0;
             micTestInterval = setInterval(function() {
                 analyser.getByteFrequencyData(data);
                 var level = 0;
-                for (var i = 0; i < data.length; i++) {
-                    if (data[i] > level) level = data[i];
-                }
-                if (level > maxLevel) maxLevel = level;
-                
+                for (var i = 0; i < data.length; i++) { if (data[i] > level) level = data[i]; }
                 var percent = Math.min(100, (level / 255) * 100);
                 var fill = $('#micLevelFill');
                 if (fill) {
@@ -2596,19 +2566,17 @@ function getClientHTML() {
                     fill.style.background = level < 10 ? 'var(--red)' : level < 50 ? 'var(--yellow)' : 'var(--green)';
                 }
             }, 100);
-            
             $('#testMicBtn').textContent = 'Остановить';
             $('#testMicBtn').onclick = function() {
                 stopMicTest();
                 $('#testMicBtn').textContent = 'Проверить';
                 $('#testMicBtn').onclick = testMicrophone;
             };
-            
-        } catch (e) {
+        } catch(e) {
             $('#micTestResult').innerHTML = '<span style="color:var(--red);">✗ ' + e.message + '</span>';
         }
     }
-    
+
     function stopMicTest() {
         if (micTestInterval) { clearInterval(micTestInterval); micTestInterval = null; }
         if (micTestStream) { micTestStream.getTracks().forEach(function(t) { t.stop(); }); micTestStream = null; }
@@ -2616,72 +2584,57 @@ function getClientHTML() {
         var fill = $('#micLevelFill');
         if (fill) fill.style.width = '0%';
     }
-    
+
     async function saveAudioSettings() {
         var newMicId = $('#micSelect').value;
         var newOutputId = $('#outputSelect').value;
-        
         selectedMicId = newMicId;
         selectedOutputId = newOutputId;
-        
         localStorage.setItem('selectedMicId', newMicId);
         localStorage.setItem('selectedOutputId', newOutputId);
-        
         if (newOutputId) {
             document.querySelectorAll('audio[id^="audio-"]').forEach(function(audio) {
-                if (audio.setSinkId) {
-                    audio.setSinkId(newOutputId).catch(function() {});
-                }
+                if (audio.setSinkId) audio.setSinkId(newOutputId).catch(function(){});
             });
         }
-        
         if (currentVoiceChannel && localStream) {
             debug('Applying new microphone...', 'warn');
             localStream.getTracks().forEach(function(t) { t.stop(); });
-            
             try {
                 var constraints = { audio: newMicId ? { deviceId: { exact: newMicId } } : true };
                 var newStream = await navigator.mediaDevices.getUserMedia(constraints);
                 localStream = newStream;
-                
                 if (isMuted) newStream.getAudioTracks().forEach(function(t) { t.enabled = false; });
-                
                 var newTrack = newStream.getAudioTracks()[0];
-                peerConnections.forEach(function(pc, odego) {
+                peerConnections.forEach(function(pc) {
                     var senders = pc.getSenders();
                     var audioSender = senders.find(function(s) { return s.track && s.track.kind === 'audio'; });
-                    if (audioSender) {
-                        audioSender.replaceTrack(newTrack).catch(function(e) {
-                            debug('Track replace error: ' + e.message, 'error');
-                        });
-                    }
+                    if (audioSender) audioSender.replaceTrack(newTrack).catch(function(e) {
+                        debug('Track replace error: ' + e.message, 'error');
+                    });
                 });
-                
                 if (audioContext) audioContext.close().catch(function(){});
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 localAnalyser = audioContext.createAnalyser();
                 localAnalyser.fftSize = 256;
                 audioContext.createMediaStreamSource(newStream).connect(localAnalyser);
-                
                 debug('Microphone changed successfully', 'success');
-            } catch (e) {
+            } catch(e) {
                 debug('Mic change error: ' + e.message, 'error');
                 alert('Не удалось сменить микрофон: ' + e.message);
             }
         }
-        
         stopMicTest();
         closeModal();
     }
-    
+
     // ============================================
-    // RENDERING - MAIN
+    // RENDERING
     // ============================================
-    
+
     function render() {
         var app = $('#app');
         if (!token || !currentUser) { renderAuth(); return; }
-        
         var html = '<div class="app-container"><div class="server-list" id="serverList"></div>';
         if (currentServer) {
             html += '<div class="channel-sidebar" id="channelSidebar"></div>';
@@ -2692,16 +2645,12 @@ function getClientHTML() {
             html += '<div class="chat-area" id="chatArea"></div>';
         }
         html += '</div><div id="modalContainer"></div>';
-        
         if (showVoiceGrid && currentVoiceChannel) {
             html += '<div class="voice-grid-overlay" id="voiceGridOverlay"></div>';
         }
-        
         app.innerHTML = html;
-        
         var dp = document.getElementById('debugPanel');
         if (dp && debugMode) dp.classList.add('show');
-        
         renderServerList();
         if (currentServer) {
             renderChannelSidebar();
@@ -2711,12 +2660,9 @@ function getClientHTML() {
             renderDMSidebar();
             renderDMChatArea();
         }
-        
-        if (showVoiceGrid && currentVoiceChannel) {
-            renderVoiceGrid();
-        }
+        if (showVoiceGrid && currentVoiceChannel) renderVoiceGrid();
     }
-    
+
     function renderAuth() {
         var app = $('#app');
         var isLogin = !window.showRegister;
@@ -2731,7 +2677,6 @@ function getClientHTML() {
             '<button type="submit" class="btn">' + (isLogin ? 'Войти' : 'Зарегистрироваться') + '</button></form>' +
             '<div class="auth-switch">' + (isLogin ? 'Нет аккаунта?' : 'Есть аккаунт?') +
             ' <a id="authSwitch">' + (isLogin ? 'Регистрация' : 'Войти') + '</a></div></div></div>';
-        
         $('#authSwitch').onclick = function() { window.showRegister = isLogin; renderAuth(); };
         $('#authForm').onsubmit = function(e) {
             e.preventDefault();
@@ -2739,20 +2684,19 @@ function getClientHTML() {
             var password = $('#password').value;
             var usernameEl = $('#username');
             var body = isLogin ? { email: email, password: password } : { email: email, password: password, username: usernameEl.value };
-            
             api(isLogin ? '/api/auth/login' : '/api/auth/register', { method: 'POST', body: JSON.stringify(body) })
                 .then(function(d) {
                     token = d.token;
                     currentUser = d.user;
                     localStorage.setItem('token', token);
                     connectWebSocket();
-                    return loadServers();
+                    return loadIceConfig().then(function() { return loadServers(); });
                 })
                 .then(function() { render(); })
                 .catch(function(e) { $('#authError').innerHTML = '<div class="error-msg">' + e.message + '</div>'; });
         };
     }
-    
+
     function renderServerList() {
         var c = $('#serverList'); if (!c) return;
         var html = '<div class="server-icon home ' + (!currentServer ? 'active' : '') + '" id="homeBtn" title="Личные сообщения">🏠</div>';
@@ -2762,14 +2706,13 @@ function getClientHTML() {
         });
         html += '<div class="server-icon add" id="addServerBtn" title="Добавить сервер">+</div>';
         c.innerHTML = html;
-        
         $('#homeBtn').onclick = selectHome;
         $('#addServerBtn').onclick = showCreateServerModal;
         $$('.server-icon[data-server-id]').forEach(function(el) {
             el.onclick = function() { selectServer(el.getAttribute('data-server-id')); };
         });
     }
-    
+
     function renderChannelSidebar() {
         var c = $('#channelSidebar'); if (!c || !currentServer) return;
         c.innerHTML =
@@ -2777,25 +2720,21 @@ function getClientHTML() {
             '<div class="channel-list" id="channelList"></div>' +
             '<div id="voiceConnectedPanel"></div>' +
             '<div class="user-panel" id="userPanel"></div>';
-        
         $('#serverHeader').onclick = showServerSettings;
         renderChannels();
         renderVoiceConnected();
         renderUserPanel();
     }
-    
+
     function renderChannels() {
         var c = $('#channelList'); if (!c || !currentServer) return;
         var channels = currentServer.channels || [];
         var textCh = channels.filter(function(ch) { return ch.type === 'text'; });
         var voiceCh = channels.filter(function(ch) { return ch.type === 'voice'; });
-        
+
         var html = '<div class="channel-category"><span>ТЕКСТОВЫЕ КАНАЛЫ</span>';
-        if (currentServer.owner_id === currentUser.id) {
-            html += '<button id="addTextChannel" title="Создать канал">+</button>';
-        }
+        if (currentServer.owner_id === currentUser.id) html += '<button id="addTextChannel" title="Создать канал">+</button>';
         html += '</div>';
-        
         textCh.forEach(function(ch) {
             html += '<div class="channel-item ' + (currentChannel && currentChannel.id === ch.id ? 'active' : '') + '" data-channel-id="' + ch.id + '">';
             html += '<span class="icon">#</span><span class="name">' + escapeHtml(ch.name) + '</span>';
@@ -2804,18 +2743,14 @@ function getClientHTML() {
             }
             html += '</div>';
         });
-        
+
         html += '<div class="channel-category"><span>ГОЛОСОВЫЕ КАНАЛЫ</span>';
-        if (currentServer.owner_id === currentUser.id) {
-            html += '<button id="addVoiceChannel" title="Создать канал">+</button>';
-        }
+        if (currentServer.owner_id === currentUser.id) html += '<button id="addVoiceChannel" title="Создать канал">+</button>';
         html += '</div>';
-        
         voiceCh.forEach(function(ch) {
             var parts = ch.voiceParticipants || [];
             var hasUsers = parts.length > 0;
             var isConn = currentVoiceChannel && currentVoiceChannel.id === ch.id;
-            
             html += '<div class="voice-channel ' + (hasUsers ? 'has-users' : '') + '">';
             html += '<div class="channel-item ' + (isConn ? 'active' : '') + '" data-voice-channel-id="' + ch.id + '">';
             html += '<span class="icon">🔊</span><span class="name">' + escapeHtml(ch.name) + '</span>';
@@ -2823,7 +2758,6 @@ function getClientHTML() {
                 html += '<button class="delete-btn" data-delete-channel="' + ch.id + '" title="Удалить">×</button>';
             }
             html += '</div>';
-            
             if (hasUsers) {
                 html += '<div class="voice-participants">';
                 parts.forEach(function(p) {
@@ -2831,13 +2765,11 @@ function getClientHTML() {
                     var isSpeaking = speakingUsers.has(uid);
                     var connState = connectionStates.get(uid);
                     var stateClass = '';
-                    
                     if (uid !== currentUser.id && connState) {
                         if (connState === 'connected' || connState === 'completed') stateClass = 'connected';
                         else if (connState === 'failed' || connState === 'disconnected') stateClass = 'failed';
                         else stateClass = 'connecting';
                     }
-                    
                     html += '<div class="voice-participant ' + (isSpeaking ? 'speaking' : '') + '" data-user-id="' + uid + '">';
                     html += '<div class="avatar">' + getInitials(p.username) + '</div>';
                     html += '<span class="name">' + escapeHtml(p.username) + '</span>';
@@ -2855,43 +2787,31 @@ function getClientHTML() {
             }
             html += '</div>';
         });
-        
         c.innerHTML = html;
-        
+
         if ($('#addTextChannel')) $('#addTextChannel').onclick = function() { showCreateChannelModal('text'); };
         if ($('#addVoiceChannel')) $('#addVoiceChannel').onclick = function() { showCreateChannelModal('voice'); };
-        
         $$('.channel-item[data-channel-id]').forEach(function(el) {
             el.onclick = function(e) {
-                if (!e.target.classList.contains('delete-btn')) {
-                    selectChannel(el.getAttribute('data-channel-id'));
-                }
+                if (!e.target.classList.contains('delete-btn')) selectChannel(el.getAttribute('data-channel-id'));
             };
         });
-        
         $$('.channel-item[data-voice-channel-id]').forEach(function(el) {
             el.onclick = function(e) {
                 if (!e.target.classList.contains('delete-btn')) {
-                    var ch = currentServer.channels.find(function(c) {
-                        return c.id === el.getAttribute('data-voice-channel-id');
-                    });
+                    var ch = currentServer.channels.find(function(c) { return c.id === el.getAttribute('data-voice-channel-id'); });
                     if (ch) joinVoiceChannel(ch);
                 }
             };
         });
-        
         $$('[data-delete-channel]').forEach(function(el) {
-            el.onclick = function(e) {
-                e.stopPropagation();
-                deleteChannel(el.getAttribute('data-delete-channel'));
-            };
+            el.onclick = function(e) { e.stopPropagation(); deleteChannel(el.getAttribute('data-delete-channel')); };
         });
     }
-    
+
     function renderVoiceConnected() {
         var c = $('#voiceConnectedPanel'); if (!c) return;
         if (!currentVoiceChannel) { c.innerHTML = ''; return; }
-        
         var relayClass = usingRelay ? ' relay' : '';
         var html = '<div class="voice-connected">';
         html += '<div class="voice-status">';
@@ -2900,7 +2820,6 @@ function getClientHTML() {
         html += '<div class="title' + relayClass + '">' + (usingRelay ? 'Подключено через TURN' : 'Голос подключен') + '</div>';
         html += '<div class="channel">' + escapeHtml(currentVoiceChannel.name) + '</div>';
         html += '</div></div>';
-        
         html += '<div class="voice-controls">';
         html += '<button id="vcMute" class="' + (isMuted ? 'active' : '') + '" title="' + (isMuted ? 'Включить микрофон' : 'Выключить микрофон') + '">' + (isMuted ? '🔇' : '🎤') + '</button>';
         html += '<button id="vcDeafen" class="' + (isDeafened ? 'active' : '') + '" title="' + (isDeafened ? 'Включить звук' : 'Выключить звук') + '">' + (isDeafened ? '🔕' : '🔔') + '</button>';
@@ -2908,26 +2827,17 @@ function getClientHTML() {
         html += '<button id="vcGrid" title="Показать участников">👥</button>';
         html += '<button id="vcDisconnect" class="disconnect" title="Отключиться">📞</button>';
         html += '</div></div>';
-        
         c.innerHTML = html;
-        
         $('#vcMute').onclick = toggleMute;
         $('#vcDeafen').onclick = toggleDeafen;
-        $('#vcScreen').onclick = function() {
-            if (isScreenSharing) stopScreenShare();
-            else showScreenShareModal();
-        };
-        $('#vcGrid').onclick = function() {
-            showVoiceGrid = !showVoiceGrid;
-            render();
-        };
+        $('#vcScreen').onclick = function() { if (isScreenSharing) stopScreenShare(); else showScreenShareModal(); };
+        $('#vcGrid').onclick = function() { showVoiceGrid = !showVoiceGrid; render(); };
         $('#vcDisconnect').onclick = leaveVoiceChannel;
     }
-    
+
     function renderUserPanel() {
         var c = $('#userPanel'); if (!c) return;
-        var isSpeaking = speakingUsers.has(currentUser.id) && currentVoiceChannel;
-        
+        var isSpeaking = speakingUsers.has(currentUser.id) && !!currentVoiceChannel;
         var html = '<div class="avatar ' + (isSpeaking ? 'speaking' : '') + '">' + getInitials(currentUser.username) + '</div>';
         html += '<div class="info"><div class="username">' + escapeHtml(currentUser.username) + '</div>';
         html += '<div class="status">В сети</div></div>';
@@ -2938,25 +2848,19 @@ function getClientHTML() {
             html += '<button id="upDeafen" class="' + (isDeafened ? 'muted' : '') + '" title="Звук">' + (isDeafened ? '🔕' : '🎧') + '</button>';
         }
         html += '<button id="logoutBtn" title="Выйти">🚪</button></div>';
-        
         c.innerHTML = html;
-        
         $('#audioSettingsBtn').onclick = showAudioSettings;
         if ($('#upMute')) $('#upMute').onclick = toggleMute;
         if ($('#upDeafen')) $('#upDeafen').onclick = toggleDeafen;
         $('#logoutBtn').onclick = logout;
     }
-    
+
     function renderVoiceGrid() {
         var c = $('#voiceGridOverlay'); if (!c || !currentVoiceChannel) return;
-        
         var html = '<div class="voice-grid-header">';
         html += '<h3>' + escapeHtml(currentVoiceChannel.name) + ' — ' + (voiceParticipants.size + 1) + ' участников</h3>';
-        html += '<button class="close-btn" id="closeVoiceGrid">×</button>';
-        html += '</div>';
+        html += '<button class="close-btn" id="closeVoiceGrid">×</button></div>';
         html += '<div class="voice-grid-container">';
-        
-        // Текущий пользователь
         var mySpeaking = speakingUsers.has(currentUser.id);
         html += '<div class="voice-grid-item ' + (mySpeaking ? 'speaking' : '') + (isScreenSharing ? ' streaming' : '') + '" data-user-id="' + currentUser.id + '">';
         if (isScreenSharing && screenStream) {
@@ -2970,14 +2874,11 @@ function getClientHTML() {
         if (isMuted) html += '<span title="Замьючен">🔇</span>';
         if (isDeafened) html += '<span title="Оглушён">🔕</span>';
         html += '</div></div>';
-        
-        // Другие участники
         voiceParticipants.forEach(function(p, uid) {
             var isSpeaking = speakingUsers.has(uid);
             var streams = remoteStreams.get(uid);
             var hasScreen = streams && streams.screen;
             var isFocused = focusedStream === uid;
-            
             html += '<div class="voice-grid-item ' + (isSpeaking ? 'speaking' : '') + (p.streaming ? ' streaming' : '') + (isFocused ? ' focused' : '') + '" data-user-id="' + uid + '" data-focusable="' + (hasScreen ? 'true' : 'false') + '">';
             if (hasScreen) {
                 html += '<video id="screen-video-' + uid + '" autoplay playsinline></video>';
@@ -2991,39 +2892,28 @@ function getClientHTML() {
             if (p.deafened) html += '<span title="Оглушён">🔕</span>';
             html += '</div></div>';
         });
-        
         html += '</div>';
         c.innerHTML = html;
-        
         $('#closeVoiceGrid').onclick = function() { showVoiceGrid = false; render(); };
-        
-        // Привязка видео к элементам
         if (isScreenSharing && screenStream) {
             var myVideo = document.getElementById('my-screen-video');
             if (myVideo) myVideo.srcObject = screenStream;
         }
-        
         remoteStreams.forEach(function(streams, uid) {
             if (streams.screen) {
                 var video = document.getElementById('screen-video-' + uid);
                 if (video) video.srcObject = streams.screen;
             }
         });
-        
-        // Обработчик клика для фокуса
         $$('.voice-grid-item[data-focusable="true"]').forEach(function(el) {
             el.onclick = function() {
                 var uid = el.getAttribute('data-user-id');
-                if (focusedStream === uid) {
-                    focusedStream = null;
-                } else {
-                    focusedStream = uid;
-                }
+                focusedStream = focusedStream === uid ? null : uid;
                 renderVoiceGrid();
             };
         });
     }
-    
+
     function renderChatArea() {
         var c = $('#chatArea'); if (!c) return;
         if (!currentChannel) {
@@ -3037,11 +2927,10 @@ function getClientHTML() {
             '<div class="message-input-container"><div class="message-input">' +
             '<input type="text" id="messageInput" placeholder="Написать в #' + escapeHtml(currentChannel.name) + '" maxlength="2000">' +
             '<button id="sendBtn">➤</button></div></div>';
-        
         renderMessages();
         setupMessageInput();
     }
-    
+
     function renderMessages() {
         var c = $('#messagesContainer'); if (!c) return;
         if (!messages.length) {
@@ -3062,12 +2951,11 @@ function getClientHTML() {
         c.innerHTML = html;
         scrollToBottom();
     }
-    
+
     function renderMembers() {
         var c = $('#membersSidebar'); if (!c || !currentServer || !currentServer.members) return;
         var online = currentServer.members.filter(function(m) { return m.status === 'online'; });
         var offline = currentServer.members.filter(function(m) { return m.status !== 'online'; });
-        
         var html = '<div class="members-category">В СЕТИ — ' + online.length + '</div>';
         online.forEach(function(m) {
             var inVoice = getMemberVoiceChannel(m.id);
@@ -3077,21 +2965,18 @@ function getClientHTML() {
             if (inVoice) html += '<span class="voice-icon" title="В голосовом канале">🔊</span>';
             html += '</div>';
         });
-        
         html += '<div class="members-category">НЕ В СЕТИ — ' + offline.length + '</div>';
         offline.forEach(function(m) {
             html += '<div class="member-item" data-member-id="' + m.id + '">';
             html += '<div class="avatar">' + getInitials(m.username) + '<div class="status-dot offline"></div></div>';
             html += '<span class="name">' + escapeHtml(m.username) + '</span></div>';
         });
-        
         c.innerHTML = html;
-        
         $$('.member-item[data-member-id]').forEach(function(el) {
             el.onclick = function() { startDM(el.getAttribute('data-member-id')); };
         });
     }
-    
+
     function getMemberVoiceChannel(uid) {
         if (!currentServer || !currentServer.channels) return null;
         for (var i = 0; i < currentServer.channels.length; i++) {
@@ -3105,26 +2990,21 @@ function getClientHTML() {
         }
         return null;
     }
-    
+
     function renderDMSidebar() {
         var c = $('#dmSidebar'); if (!c) return;
         c.innerHTML =
             '<div class="dm-header"><input type="text" class="dm-search" placeholder="Найти пользователя" id="dmSearch"></div>' +
             '<div class="dm-list" id="dmList"></div>' +
             '<div class="user-panel" id="userPanel"></div>';
-        
         renderDMList();
         renderUserPanel();
-        
         $('#dmSearch').oninput = function(e) {
             var q = e.target.value;
             if (q.length < 2) { renderDMList(); return; }
             api('/api/users/search?q=' + encodeURIComponent(q)).then(function(users) {
                 var list = $('#dmList');
-                if (!users.length) {
-                    list.innerHTML = '<div class="empty-state"><p>Никого не найдено</p></div>';
-                    return;
-                }
+                if (!users.length) { list.innerHTML = '<div class="empty-state"><p>Никого не найдено</p></div>'; return; }
                 var html = '';
                 users.forEach(function(u) {
                     html += '<div class="dm-item" data-user-id="' + u.id + '">';
@@ -3138,14 +3018,11 @@ function getClientHTML() {
             });
         };
     }
-    
+
     function renderDMList() {
         api('/api/dm').then(function(convs) {
             var list = $('#dmList'); if (!list) return;
-            if (!convs.length) {
-                list.innerHTML = '<div class="empty-state"><p>Нет бесед</p></div>';
-                return;
-            }
+            if (!convs.length) { list.innerHTML = '<div class="empty-state"><p>Нет бесед</p></div>'; return; }
             var html = '';
             convs.forEach(function(c) {
                 html += '<div class="dm-item ' + (currentDM && currentDM.id === c.id ? 'active' : '') + '" data-dm-id="' + c.id + '" data-dm-name="' + escapeHtml(c.username) + '">';
@@ -3158,7 +3035,7 @@ function getClientHTML() {
             });
         });
     }
-    
+
     function renderDMChatArea() {
         var c = $('#chatArea'); if (!c) return;
         if (!currentDM) {
@@ -3172,15 +3049,14 @@ function getClientHTML() {
             '<div class="message-input-container"><div class="message-input">' +
             '<input type="text" id="messageInput" placeholder="Написать @' + escapeHtml(currentDM.username) + '" maxlength="2000">' +
             '<button id="sendDMBtn">➤</button></div></div>';
-        
         renderMessages();
         setupDMInput();
     }
-    
+
     // ============================================
     // MODALS & ACTIONS
     // ============================================
-    
+
     function showCreateServerModal() {
         $('#modalContainer').innerHTML =
             '<div class="modal-overlay" id="modalOverlay"><div class="modal">' +
@@ -3189,7 +3065,6 @@ function getClientHTML() {
             '<div class="modal-body" id="modalBody"><div class="form-group"><label>Название сервера</label><input type="text" id="serverName" maxlength="100" placeholder="Мой сервер"></div></div>' +
             '<div class="modal-footer"><button class="btn secondary" id="cancelBtn">Отмена</button><button class="btn" id="modalAction">Создать</button></div>' +
             '</div></div>';
-        
         $('#modalOverlay').onclick = function(e) { if (e.target.id === 'modalOverlay') closeModal(); };
         $('#cancelBtn').onclick = closeModal;
         $('#createTab').onclick = function() {
@@ -3208,7 +3083,7 @@ function getClientHTML() {
         };
         $('#modalAction').onclick = createServer;
     }
-    
+
     function showCreateChannelModal(type) {
         $('#modalContainer').innerHTML =
             '<div class="modal-overlay" id="modalOverlay"><div class="modal">' +
@@ -3216,42 +3091,39 @@ function getClientHTML() {
             '<div class="modal-body"><div class="form-group"><label>Название канала</label><input type="text" id="channelName" maxlength="100" placeholder="' + (type === 'voice' ? 'Голосовой чат' : 'общий') + '"></div></div>' +
             '<div class="modal-footer"><button class="btn secondary" id="cancelBtn">Отмена</button><button class="btn" id="createChannelBtn">Создать</button></div>' +
             '</div></div>';
-        
         $('#modalOverlay').onclick = function(e) { if (e.target.id === 'modalOverlay') closeModal(); };
         $('#cancelBtn').onclick = closeModal;
         $('#createChannelBtn').onclick = function() { createChannel(type); };
     }
-    
+
     function showServerSettings() {
         if (!currentServer) return;
         var isOwner = currentServer.owner_id === currentUser.id;
         var footer = isOwner
             ? '<button class="btn danger" id="deleteServerBtn">Удалить сервер</button>'
             : '<button class="btn danger" id="leaveServerBtn">Покинуть сервер</button>';
-        
         $('#modalContainer').innerHTML =
             '<div class="modal-overlay" id="modalOverlay"><div class="modal">' +
             '<div class="modal-header"><h2>' + escapeHtml(currentServer.name) + '</h2></div>' +
             '<div class="modal-body"><div class="form-group"><label>Код приглашения</label><div class="invite-code" id="inviteCodeDisplay">Загрузка...</div><p style="font-size:12px;color:var(--text-muted);margin-top:8px;">Поделитесь этим кодом с друзьями</p></div></div>' +
             '<div class="modal-footer">' + footer + '<button class="btn secondary" id="closeBtn">Закрыть</button></div>' +
             '</div></div>';
-        
         $('#modalOverlay').onclick = function(e) { if (e.target.id === 'modalOverlay') closeModal(); };
         $('#closeBtn').onclick = closeModal;
         if ($('#deleteServerBtn')) $('#deleteServerBtn').onclick = deleteServer;
         if ($('#leaveServerBtn')) $('#leaveServerBtn').onclick = leaveServer;
-        
         api('/api/servers/' + currentServer.id + '/invite').then(function(d) {
-            $('#inviteCodeDisplay').textContent = d.invite_code;
+            var el = $('#inviteCodeDisplay');
+            if (el) el.textContent = d.invite_code;
         });
     }
-    
+
     function closeModal() { $('#modalContainer').innerHTML = ''; }
-    
+
     function loadServers() {
         return api('/api/servers').then(function(d) { servers = d; });
     }
-    
+
     function selectServer(id) {
         api('/api/servers/' + id).then(function(d) {
             currentServer = d;
@@ -3261,13 +3133,9 @@ function getClientHTML() {
             if (currentChannel) loadMessages();
         });
     }
-    
-    function selectHome() {
-        currentServer = null;
-        currentChannel = null;
-        render();
-    }
-    
+
+    function selectHome() { currentServer = null; currentChannel = null; render(); }
+
     function selectChannel(id) {
         if (!currentServer) return;
         var ch = currentServer.channels.find(function(c) { return c.id === id; });
@@ -3276,22 +3144,18 @@ function getClientHTML() {
         renderChatArea();
         loadMessages();
     }
-    
+
     function loadMessages() {
         if (!currentChannel) return;
         api('/api/channels/' + currentChannel.id + '/messages?limit=50').then(function(d) {
-            messages = d;
-            renderMessages();
+            messages = d; renderMessages();
         });
     }
-    
+
     function setupMessageInput() {
         var inp = $('#messageInput'); if (!inp) return;
         inp.onkeydown = function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
         };
         inp.oninput = function() {
             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -3301,7 +3165,7 @@ function getClientHTML() {
         inp.focus();
         $('#sendBtn').onclick = sendMessage;
     }
-    
+
     function sendMessage() {
         var inp = $('#messageInput');
         var content = inp && inp.value ? inp.value.trim() : '';
@@ -3311,34 +3175,26 @@ function getClientHTML() {
         }
         inp.value = '';
     }
-    
+
     function selectDM(id, name) {
         currentDM = { id: id, username: name };
         api('/api/dm/' + id + '?limit=50').then(function(d) {
-            messages = d;
-            renderDMChatArea();
+            messages = d; renderDMChatArea();
         });
     }
-    
+
     function startDM(id) {
-        currentServer = null;
-        currentChannel = null;
+        currentServer = null; currentChannel = null;
         api('/api/users/' + id).then(function(u) {
             currentDM = { id: id, username: u.username };
             return api('/api/dm/' + id + '?limit=50');
-        }).then(function(d) {
-            messages = d;
-            render();
-        });
+        }).then(function(d) { messages = d; render(); });
     }
-    
+
     function setupDMInput() {
         var inp = $('#messageInput'); if (!inp) return;
         inp.onkeydown = function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendDM();
-            }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendDM(); }
         };
         inp.oninput = function() {
             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -3348,7 +3204,7 @@ function getClientHTML() {
         inp.focus();
         $('#sendDMBtn').onclick = sendDM;
     }
-    
+
     function sendDM() {
         var inp = $('#messageInput');
         var content = inp && inp.value ? inp.value.trim() : '';
@@ -3358,7 +3214,7 @@ function getClientHTML() {
         }
         inp.value = '';
     }
-    
+
     function createServer() {
         var name = ($('#serverName') || {}).value;
         if (!name || !name.trim()) { alert('Введите название сервера'); return; }
@@ -3366,7 +3222,7 @@ function getClientHTML() {
             .then(function(s) { servers.push(s); closeModal(); selectServer(s.id); })
             .catch(function(e) { alert(e.message); });
     }
-    
+
     function joinServerAction() {
         var code = ($('#inviteCode') || {}).value;
         if (!code || !code.trim()) { alert('Введите код приглашения'); return; }
@@ -3374,7 +3230,7 @@ function getClientHTML() {
             .then(function(s) { servers.push(s); closeModal(); selectServer(s.id); })
             .catch(function(e) { alert(e.message); });
     }
-    
+
     function createChannel(type) {
         var name = ($('#channelName') || {}).value;
         if (!name || !name.trim()) { alert('Введите название канала'); return; }
@@ -3382,85 +3238,73 @@ function getClientHTML() {
             .then(function() { closeModal(); })
             .catch(function(e) { alert(e.message); });
     }
-    
+
     function deleteChannel(id) {
         if (!confirm('Удалить этот канал?')) return;
         api('/api/channels/' + id, { method: 'DELETE' }).catch(function(e) { alert(e.message); });
     }
-    
+
     function deleteServer() {
         if (!confirm('Вы уверены, что хотите удалить сервер "' + currentServer.name + '"? Это действие нельзя отменить.')) return;
         api('/api/servers/' + currentServer.id, { method: 'DELETE' })
             .then(function() {
                 servers = servers.filter(function(s) { return s.id !== currentServer.id; });
-                currentServer = null;
-                currentChannel = null;
-                closeModal();
-                render();
+                currentServer = null; currentChannel = null; closeModal(); render();
             })
             .catch(function(e) { alert(e.message); });
     }
-    
+
     function leaveServer() {
         if (!confirm('Покинуть сервер "' + currentServer.name + '"?')) return;
         api('/api/servers/' + currentServer.id + '/leave', { method: 'POST' })
             .then(function() {
                 servers = servers.filter(function(s) { return s.id !== currentServer.id; });
-                currentServer = null;
-                currentChannel = null;
-                closeModal();
-                render();
+                currentServer = null; currentChannel = null; closeModal(); render();
             })
             .catch(function(e) { alert(e.message); });
     }
-    
+
     function scrollToBottom() {
         var c = $('#messagesContainer');
         if (c) c.scrollTop = c.scrollHeight;
     }
-    
+
     function logout() {
         if (currentVoiceChannel) leaveVoiceChannel();
-        token = null;
-        currentUser = null;
+        if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+        token = null; currentUser = null;
         localStorage.removeItem('token');
         if (ws) ws.close();
-        servers = [];
-        currentServer = null;
-        currentChannel = null;
-        currentDM = null;
-        messages = [];
+        servers = []; currentServer = null; currentChannel = null; currentDM = null; messages = [];
+        pendingVoiceRejoin = null;
         render();
     }
-    
+
     // ============================================
     // KEYBOARD SHORTCUTS
     // ============================================
-    
+
     document.addEventListener('keydown', function(e) {
-        // Ctrl+D - Toggle debug panel
         if (e.ctrlKey && e.key === 'd') {
             e.preventDefault();
             debugMode = !debugMode;
             var p = document.getElementById('debugPanel');
             if (p) p.classList.toggle('show', debugMode);
         }
-        // Escape - Close modals or voice grid
         if (e.key === 'Escape') {
             if ($('#modalOverlay')) closeModal();
             else if (showVoiceGrid) { showVoiceGrid = false; render(); }
             else if (focusedStream) { focusedStream = null; renderVoiceGrid(); }
         }
-        // M - Toggle mute (when in voice)
         if (e.key === 'm' && !e.ctrlKey && currentVoiceChannel && document.activeElement.tagName !== 'INPUT') {
             toggleMute();
         }
     });
-    
+
     // ============================================
-    // INITIALIZATION
+    // INIT
     // ============================================
-    
+
     function init() {
         token = localStorage.getItem('token');
         if (token) {
@@ -3468,7 +3312,8 @@ function getClientHTML() {
                 .then(function(u) {
                     currentUser = u;
                     connectWebSocket();
-                    return loadServers();
+                    // ИСПРАВЛЕНИЕ 11: Загружаем ICE-конфиг параллельно с серверами.
+                    return Promise.all([loadIceConfig(), loadServers()]);
                 })
                 .then(function() { render(); })
                 .catch(function() {
@@ -3480,7 +3325,7 @@ function getClientHTML() {
             render();
         }
     }
-    
+
     init();
 })();
 </script>
