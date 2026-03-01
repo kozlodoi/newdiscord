@@ -1519,6 +1519,7 @@ function getClientHTML() {
         .message .author { font-weight: 500; color: var(--text-primary); }
         .message .timestamp { font-size: 11px; color: #777d86; }
         .message .text { color: var(--text-secondary); word-wrap: break-word; line-height: 1.4; }
+        .message-reactions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; position: relative; }
         .message-reactions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
         .reaction-chip { border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: var(--text-primary); border-radius: 999px; padding: 3px 8px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
         .reaction-chip:hover { background: rgba(255,255,255,0.09); }
@@ -1527,12 +1528,16 @@ function getClientHTML() {
         .reaction-add-btn { border: 1px dashed rgba(255,255,255,0.22); border-radius: 999px; background: transparent; color: var(--text-muted); width: 26px; height: 22px; cursor: pointer; }
         .reaction-add-btn:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.45); }
         .message-extra-actions { display: flex; align-items: center; gap: 8px; }
+        .emoji-picker { position: absolute; background: #1e1f22; border: 1px solid #2f3136; border-radius: 10px; width: 280px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 90; }
+        .emoji-picker.for-input { right: 0; bottom: calc(100% + 8px); }
+        .emoji-picker.for-reaction { left: 0; bottom: calc(100% + 6px); }
         .emoji-picker { position: absolute; background: #1e1f22; border: 1px solid #2f3136; border-radius: 10px; width: 280px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 40; }
         .emoji-picker-header { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
         .emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
         .emoji-btn { background: transparent; border: none; font-size: 20px; cursor: pointer; border-radius: 6px; padding: 3px; }
         .emoji-btn:hover { background: rgba(255,255,255,0.08); }
         .emoji-btn.nitro::after { content: '✦'; font-size: 9px; color: #ff8afb; position: relative; top: -8px; left: -2px; }
+        .message-input-container { padding: 0 16px 24px; flex-shrink: 0; position: relative; }
         .message-input-container { padding: 0 16px 24px; flex-shrink: 0; }
         .message-input { display: flex; align-items: center; background: #3a3d44; border-radius: 10px; padding: 0 12px; min-height: 44px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05); }
         .message-input input { flex: 1; background: none; border: none; padding: 12px 0; color: var(--text-primary); font-size: 16px; }
@@ -3369,6 +3374,8 @@ function getClientHTML() {
         if (!emojiCatalog.length || !emojiPickerState || emojiPickerState.targetId !== targetId) return '';
         var normal = emojiCatalog.filter(function(e){ return !e.nitro; });
         var nitro = emojiCatalog.filter(function(e){ return e.nitro; });
+        var cls = emojiPickerState.mode === 'reaction' ? 'for-reaction' : 'for-input';
+        var html = '<div class="emoji-picker ' + cls + '" id="emojiPicker">';
         var html = '<div class="emoji-picker" id="emojiPicker">';
         html += '<div class="emoji-picker-header"><span>Смайлики Discord</span><span>Nitro ✦</span></div>';
         html += '<div class="emoji-grid">';
@@ -3379,11 +3386,28 @@ function getClientHTML() {
     }
 
     function setupEmojiButtons() {
+        var picker = $('#emojiPicker');
+        if (picker) {
+            picker.onclick = function(ev) { ev.stopPropagation(); };
+        }
         $$('.emoji-btn[data-emoji]').forEach(function(btn) {
             btn.onclick = function(ev) {
                 ev.stopPropagation();
                 var emoji = btn.getAttribute('data-emoji');
                 if (!emojiPickerState) return;
+                var mode = emojiPickerState.mode;
+                if (mode === 'input') {
+                    insertEmojiToInput(emoji);
+                } else if (mode === 'reaction') {
+                    toggleReaction(emojiPickerState.messageId, emojiPickerState.messageType, emoji);
+                }
+                emojiPickerState = null;
+                if (mode === 'input') {
+                    if (currentChannel) renderChatArea();
+                    else if (currentDM) renderDMChatArea();
+                } else {
+                    renderMessages();
+                }
                 if (emojiPickerState.mode === 'input') {
                     insertEmojiToInput(emoji);
                 } else if (emojiPickerState.mode === 'reaction') {
